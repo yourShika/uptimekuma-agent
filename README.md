@@ -1,219 +1,439 @@
-# Uptime Kuma Tray Agent
+# 🟢 Uptime Kuma Tray Agent
 
-Native Windows tray agent für Uptime-Kuma-Push-Monitore. Die Anwendung überwacht Ping-Ziele, TCP-Ports, lokale Windows-Dienste sowie lokale und verbundene Netzlaufwerke und sendet Ergebnisse als `status`, `msg` und optional `ping` an je Check konfigurierbare Push-URLs.
+**Native Windows tray agent for Uptime Kuma push monitors**
 
-Die GUI besitzt ein Uptime-Kuma-inspiriertes Branding, ein eigenes Fenster-/Tray-Icon sowie Light- und Dark-Modus.
+The **Uptime Kuma Tray Agent** monitors ping targets, TCP ports, local Windows services, local drives, mapped network drives, and UNC paths. Each check can send its result to an individually configured **Uptime Kuma Push URL**.
 
-## Voraussetzungen
+The agent sends:
 
-- Zielrechner: Windows x64. Bei self-contained Veröffentlichung ist keine separate .NET-Runtime-Installation nötig.
-- Build-Rechner: .NET SDK 8 oder neuer mit Windows Desktop Workload.
-- Keine Python-, Node.js-, Docker-, NSSM- oder Drittanbieter-Tool-Abhängigkeiten.
-- Die WPF-UI-Abhängigkeit `WPF-UI` ist für die moderne Oberfläche im Projekt vorbereitet.
+```text
+status
+msg
+ping
+```
 
-## Build
+The application includes a modern GUI with Uptime-Kuma-inspired branding, a custom window/tray icon, and support for **Light Mode** and **Dark Mode**.
+
+---
+
+## ✨ Features
+
+* 🟢 Ping checks
+* 🔌 TCP port checks
+* 🧩 Windows service checks
+* 💾 Drive checks for local drives, mapped network drives, and UNC paths
+* 🔁 Optional failure actions, including Windows service restarts
+* 🪟 Windows tray application with graphical configuration
+* 🌗 Light and dark mode
+* 🌍 Multi-language support: German, English, Polish
+* 🛠️ Windows service mode for server environments
+* 📦 MSI installer for x64 and x86
+* 🧾 Logging with masked Push URLs
+* 🔄 Update-safe configuration stored under ProgramData
+
+---
+
+## ✅ Requirements
+
+### Target system
+
+* Windows x64
+* No separate .NET runtime installation is required for self-contained builds
+
+### Build system
+
+* .NET SDK 8 or newer
+* Windows Desktop Workload
+
+### Not required
+
+* ❌ Python
+* ❌ Node.js
+* ❌ Docker
+* ❌ NSSM
+* ❌ Third-party helper tools
+
+The WPF UI dependency `WPF-UI` is prepared in the project for the modern interface.
+
+---
+
+## 🧱 Build
 
 ```cmd
 Build.cmd
 ```
 
-## Self-contained EXE erstellen
+---
+
+## 📦 Create self-contained EXE
 
 ```cmd
 Publish.cmd
 ```
 
-Die fertige EXE liegt danach unter:
+The finished executable will be located at:
 
 ```text
 build\win-x64\UptimeKumaTrayAgent.exe
 ```
 
-## Setup-Installer erstellen
+---
 
-Der empfohlene Windows-Installer ist das MSI mit Lizenzdialog und Zielordnerauswahl:
+## 🪟 Create setup installer
+
+The recommended Windows installer is the **MSI package** with a license dialog and installation folder selection.
 
 ```cmd
 BuildMsi.cmd
 ```
 
-Beim ersten MSI-Build installiert das Skript das WiX Toolset automatisch lokal nach `tools\wix`, falls es dort noch nicht vorhanden ist.
+During the first MSI build, the script automatically installs the **WiX Toolset** locally into:
 
-Die fertige Datei liegt danach unter:
+```text
+tools\wix
+```
+
+The finished MSI files will be located at:
 
 ```text
 build\installer\UptimeKumaTrayAgent-Setup-1.0.7-x64.msi
 build\installer\UptimeKumaTrayAgent-Setup-1.0.7-x86.msi
 ```
 
-Der ältere selbstextrahierende EXE-Installer kann weiterhin gebaut werden:
+The older self-extracting EXE installer can still be built:
 
 ```cmd
 BuildInstaller.cmd
 ```
 
-Die fertige Datei liegt danach unter:
+The finished file will be located at:
 
 ```text
 build\installer\UptimeKumaTrayAgent-Setup-1.0.7.exe
 ```
 
-Die Installer können für Neuinstallation und Updates verwendet werden. Bei Updates werden Dienst und Programmdateien aktualisiert, die Konfiguration und Logs unter `%ProgramData%\UptimeKumaTrayAgent` bleiben erhalten. Falls aus Version 1.0.3 noch eine Benutzer-Konfiguration unter `%AppData%\UptimeKumaTrayAgent` vorhanden ist und ProgramData leer ist oder nur eine Factory-Default-Konfiguration enthält, wird diese alte Konfiguration automatisch übernommen. Zusätzlich werden Startmenü-Einträge `UptimeKumaAgent` und `UptimeKumaAgent Konfiguration` angelegt, damit Windows-Suche Agent und Konfigurationsdatei findet.
+---
 
-Für normale Server ist `x64` empfohlen. `x86` ist das 32-bit-Paket für ältere oder entsprechend eingeschränkte Systeme. Für Releases kann zusätzlich eine Kopie mit `x32` im Dateinamen bereitgestellt werden; inhaltlich entspricht sie dem x86-Paket.
+## 🔄 Installation and updates
 
-## Installation als Windows-Dienst
+The installers can be used for both new installations and updates.
 
-Der Agent kann als echter Windows-Dienst installiert werden. Dadurch startet er beim Systemstart automatisch, auch wenn noch kein Benutzer angemeldet ist.
+During updates, the following parts are updated:
+
+* Windows service
+* Program files
+* Start menu entries
+
+The following data is kept:
+
+* Configuration
+* Logs
+* User data under `%ProgramData%\UptimeKumaTrayAgent`
+
+Existing configurations are not overwritten during updates. If ProgramData does not yet contain a real user configuration, an existing AppData configuration can be migrated automatically.
+
+The installer also creates the following Start menu entries:
+
+```text
+UptimeKumaAgent
+UptimeKumaAgent Configuration
+```
+
+This allows Windows Search to find both the agent and the configuration file.
+
+For normal server environments, `x64` is recommended.
+`x86` is the 32-bit package for older or restricted systems.
+
+For releases, an additional copy with `x32` in the file name can be provided. Internally, it is identical to the x86 package.
+
+---
+
+## ⚙️ Install as Windows service
+
+The agent can be installed as a real Windows service. This allows monitoring to start automatically during system startup, even before a user logs in.
 
 ```cmd
 Install.cmd
 ```
 
-Oder komfortabel über den Setup-Installer:
+Or install it conveniently using the setup installer:
 
 ```text
 UptimeKumaTrayAgent-Setup-1.0.7-x64.msi
 ```
 
-Wichtig: `Install.cmd` muss als Administrator gestartet werden. Der Setup-Installer fragt bei Bedarf automatisch nach Administratorrechten. Der Dienst wird als `LocalSystem` mit Starttyp `Automatisch` eingerichtet und erscheint in `services.msc` als:
+> [!IMPORTANT]
+> `Install.cmd` must be started as administrator.
+> The setup installer automatically requests administrator privileges when required.
+
+The service is installed as `LocalSystem` with startup type `Automatic` and appears in `services.msc` as:
 
 ```text
 UptimeKumaAgent
 ```
 
-Der Dienst startet das Monitoring automatisch. Die GUI bleibt weiterhin als Konfigurationsoberfläche nutzbar; gespeicherte Änderungen an der JSON-Konfiguration werden vom Dienst automatisch nachgeladen.
+The service starts monitoring automatically. The GUI remains available as the configuration interface. Saved changes to the JSON configuration are automatically reloaded by the service.
 
-## Start
+---
 
-1. Ordner entpacken.
-2. `UptimeKumaTrayAgent.exe` starten.
-3. Ping-, TCP- und Dienst-Checks in der GUI konfigurieren.
-4. Speichern.
-5. Für Serverbetrieb `Install.cmd` als Administrator ausführen.
+## 🚀 Getting started
 
-Beim Schließen bleibt die Anwendung standardmäßig im Tray aktiv. Dieses Verhalten kann unter "Globale Einstellungen" deaktiviert werden.
+1. Extract the folder
+2. Start `UptimeKumaTrayAgent.exe`
+3. Configure ping, TCP, service, and drive checks in the GUI
+4. Save the configuration
+5. For server operation, run `Install.cmd` as administrator
 
-Die Darstellung kann in der GUI unter "Globale Einstellungen" zwischen `Light` und `Dark` umgeschaltet werden.
+When closing the window, the application stays active in the tray by default. This behavior can be disabled under **Global Settings**.
 
-Die Sprache steht standardmäßig auf `System` und folgt damit der Windows-Anzeigesprache. Unterstützt sind aktuell Deutsch, English und Polski; alternativ kann die Sprache in den globalen Einstellungen fest gewählt werden. Nach einer Sprachänderung muss die App neu gestartet werden, damit alle Tabellen, Dialoge und Beschriftungen vollständig in der neuen Sprache geladen werden.
+The appearance can be switched between `Light` and `Dark` under **Global Settings**.
 
-## Fehleraktionen
+---
 
-Ping-, TCP- und Windows-Dienst-Checks können mehrere lokale Windows-Dienste als Fehleraktion hinterlegen. Wenn der Check fehlschlägt, versucht der Agent diese Dienste neu zu starten und meldet das Ergebnis in Log und Uptime-Kuma-Nachricht. Ein Cooldown verhindert, dass ein dauerhaft fehlerhafter Check die Dienste in sehr kurzen Abständen immer wieder neu startet.
+## 🌍 Language
 
-Optional kann bei einem Stop-Timeout der zugehörige Dienstprozess erzwungen beendet werden. Das entspricht dem manuellen `taskkill`-Fall, ist aber nur aktiv, wenn die Option im Check gesetzt ist oder in der Dienste-Ansicht der Button "Dienst hart neu starten" verwendet wird.
+The language is set to `System` by default and follows the Windows display language.
 
-TCP-Checks können zusätzlich passende ein- und ausgehende TCP-Verbindungen protokollieren. Das Ergebnis wird nur ins Log geschrieben und nicht an Uptime Kuma gesendet. Pro Verbindung werden Richtung, lokale/remoteseitige IP und Ports, TCP-Status, PID und Prozessname gespeichert.
+Currently supported:
 
-## Laufwerks-Checks
+* 🇩🇪 German
+* 🇬🇧 English
+* 🇵🇱 Polish
 
-Laufwerks-Checks prüfen lokale Laufwerke, gemappte Netzlaufwerke und UNC-Pfade. Optional können Mindestwerte für freien Speicher in Prozent und GB gesetzt werden. Bei Netzlaufwerken kann der Agent versuchen, das Laufwerk nach einem Abbruch wieder zu verbinden; dafür nutzt er vorhandene Windows-Anmeldedaten beziehungsweise den konfigurierten UNC-Pfad. Details wie Typ, Format, Gesamtgröße, freier Speicher und Reconnect-Ergebnis werden ins Log geschrieben.
+Alternatively, the language can be selected manually in the global settings.
 
-## Monitoring aktiv/inaktiv
+> [!NOTE]
+> After changing the language, restart the app so that all tables, dialogs, and labels are fully loaded in the selected language.
 
-Der Windows-Dienst respektiert `MonitoringAutoStart`. Wenn Monitoring in der GUI gestoppt oder die Option deaktiviert und gespeichert wird, stoppt auch der Dienst nach dem automatischen Config-Reload seine Checks und Push-Meldungen. Die GUI startet kein zweites lokales Monitoring, wenn der Windows-Dienst bereits läuft.
+---
 
-## Konfiguration
+## 🛟 Failure actions
 
-Die Konfiguration wird als JSON gespeichert:
+Ping, TCP, and Windows service checks can define one or more local Windows services as failure actions.
+
+When a check fails, the agent tries to restart the configured services and reports the result:
+
+* in the log
+* in the Uptime Kuma message
+
+A cooldown prevents permanently failing checks from restarting services repeatedly in very short intervals.
+
+Optionally, if stopping a service times out, the related service process can be forcefully terminated. This is similar to a manual `taskkill`, but only active when:
+
+* the option is enabled in the check
+* or the **Hard restart service** button is used in the services view
+
+TCP checks can also log matching incoming and outgoing TCP connections.
+
+The result is written only to the log and is not sent to Uptime Kuma. For each connection, the following details are stored:
+
+* Direction
+* Local IP and port
+* Remote IP and port
+* TCP state
+* PID
+* Process name
+
+---
+
+## 💾 Drive checks
+
+Drive checks can monitor:
+
+* Local drives
+* Mapped network drives
+* UNC paths
+
+Optional thresholds can be configured for:
+
+* Free space in percent
+* Free space in GB
+
+For network drives, the agent can try to reconnect the drive after a disconnect. It uses existing Windows credentials or the configured UNC path.
+
+The log includes details such as:
+
+* Drive type
+* File system format
+* Total size
+* Free space
+* Reconnect result
+
+---
+
+## 🟢 Monitoring enabled / disabled
+
+The Windows service respects `MonitoringAutoStart`.
+
+If monitoring is stopped in the GUI or the option is disabled and saved, the service also stops its checks and push messages after the automatic configuration reload.
+
+The GUI does not start a second local monitoring instance if the Windows service is already running.
+
+---
+
+## 🧾 Configuration
+
+The configuration is stored as JSON:
 
 ```text
 %ProgramData%\UptimeKumaTrayAgent\config.json
 ```
 
-Falls dort keine Schreibrechte vorhanden sind, nutzt der Agent:
+If write permissions are not available there, the agent automatically uses:
 
 ```text
 %AppData%\UptimeKumaTrayAgent\config.json
 ```
 
-Eine Beispielkonfiguration liegt in `config.example.json`.
-
-Ab Version 1.0.6 wird die bestehende Konfiguration bei Updates grundsätzlich nicht überschrieben. Alte AppData-Konfigurationen aus früheren Versionen werden beim Start und beim Installer-Lauf nach ProgramData migriert, wenn dort noch keine echte Benutzer-Konfiguration existiert. Deaktivierte Checks und deaktiviertes Monitoring bleiben dadurch auch nach Neustart, Dienst-Reload und Update deaktiviert.
-
-## GitHub Pages
-
-Die Projektseite liegt im Ordner `docs` und ist für diese URL vorbereitet:
+An example configuration is included as:
 
 ```text
-https://yourShika.github.io/uptimekuma-agent/
+config.example.json
 ```
 
-Der Workflow `.github/workflows/pages.yml` veröffentlicht den `docs`-Ordner über GitHub Pages, sobald das Repository auf GitHub unter `yourShika/uptimekuma-agent` liegt und Pages aktiviert ist.
+Existing configurations are not overwritten during updates.
 
-Release-Notizen liegen unter `releases`. Die fertigen MSI-Artefakte werden nicht ins Repository eingecheckt, sondern im GitHub-Release als Dateien hochgeladen.
+Older AppData configurations are migrated to ProgramData during startup or installer execution when no real user configuration exists in ProgramData yet.
 
-## Uptime-Kuma-Push-URL
+Disabled checks and disabled monitoring stay disabled after restarts, service reloads, and updates.
 
-Pro Check kann eine eigene Push-URL gesetzt werden, zum Beispiel:
+---
+
+## 📡 Uptime Kuma Push URL
+
+Each check can use its own Push URL.
+
+Example:
 
 ```text
 https://kuma.example.com/api/push/abc123
 ```
 
-Der Agent ergänzt automatisch URL-kodierte Parameter:
+The agent automatically appends URL-encoded parameters:
 
 ```text
 status=up&msg=Ping%20OK&ping=12
 ```
 
-Wenn die Push-URL bereits Query-Parameter enthält, wird korrekt mit `&` erweitert.
+If the Push URL already contains query parameters, the agent correctly appends additional parameters using `&`.
 
-## Autostart
+---
 
-Der empfohlene Serverbetrieb ist die Installation als Windows-Dienst über `Install.cmd`.
+## 🔁 Autostart
 
-Der alte GUI-Autostart nutzt weiterhin den Benutzer-Registry-Zweig:
+The recommended server setup is installation as a Windows service:
+
+```cmd
+Install.cmd
+```
+
+The older GUI autostart still uses the user registry key:
 
 ```text
 HKCU\Software\Microsoft\Windows\CurrentVersion\Run
 ```
 
-Dafür sind normalerweise keine Adminrechte erforderlich, aber er startet erst nach Benutzeranmeldung. Für Starts vor Benutzeranmeldung den Windows-Dienst verwenden.
+This usually does not require administrator privileges. However, the application only starts after user login.
 
-## Windows-Dienste und Adminrechte
+For startup before user login, use the Windows service.
 
-Das Lesen lokaler Dienste funktioniert in der Regel ohne Adminrechte. Starten, Stoppen oder Neustarten einzelner Dienste kann Adminrechte erfordern. Wenn Rechte fehlen, zeigt die GUI den Fehler an und schreibt ihn ins Log.
+---
 
-## Logging
+## 🔐 Windows services and administrator rights
 
-Logs liegen unter:
+Reading local Windows services usually works without administrator privileges.
+
+Starting, stopping, or restarting individual services may require administrator privileges.
+
+If permissions are missing:
+
+* the GUI displays the error
+* the agent writes the error to the log
+
+---
+
+## 📜 Logging
+
+Logs are stored by default under:
 
 ```text
 %ProgramData%\UptimeKumaTrayAgent\Logs
 ```
 
-oder bei Fallback unter:
+or, when using the fallback path:
 
 ```text
 %AppData%\UptimeKumaTrayAgent\Logs
 ```
 
-Push-URLs werden im Log maskiert. Alte Logs werden nach 30 Tagen gelöscht.
+Push URLs are masked in the log.
 
-## Deinstallation
+Old logs are automatically deleted after 30 days.
 
-Nach Installation als Windows-Dienst erscheint der Agent in den Windows-Systemeinstellungen unter installierten Apps als Software von `Kamil Bura`. Die Deinstallation entfernt Dienst, Programmordner und den Eintrag in den Windows-Systemeinstellungen.
+---
 
-Alternativ:
+## 🧹 Uninstallation
+
+After installation as a Windows service, the agent appears in Windows installed apps as software by:
+
+```text
+Kamil Bura
+```
+
+The uninstaller removes:
+
+* Windows service
+* Program folder
+* Entry from Windows installed apps
+
+Alternatively, uninstall using:
 
 ```cmd
 Uninstall.cmd
 ```
 
-Konfiguration und Logs bleiben standardmäßig erhalten. Mit folgendem Aufruf werden auch erzeugte Daten entfernt:
+Configuration and logs are kept by default.
+
+To also remove generated data, run:
 
 ```cmd
 Uninstall.cmd -DeleteData
 ```
 
-Im Tray-Menü gibt es zusätzlich eine einfache Deinstallation für den portablen Betrieb.
+The tray menu also contains a simple uninstall option for portable use.
 
-## Troubleshooting
+---
 
-- Keine Pushs in Uptime Kuma: Push-URL prüfen und einen Testlauf mit Push senden ausführen.
-- HTTP 401/403/404: Push-URL oder Monitor-ID in Uptime Kuma prüfen.
-- SSL-/TLS-Fehler: Zertifikat und Erreichbarkeit der Uptime-Kuma-Instanz prüfen.
-- Dienste können nicht gestartet werden: Anwendung mit ausreichenden Rechten starten.
-- Konfiguration wird nicht in ProgramData gespeichert: Der Agent nutzt automatisch den AppData-Fallback.
+## 🧯 Troubleshooting
+
+| Problem                                   | Solution                                                           |
+| ----------------------------------------- | ------------------------------------------------------------------ |
+| No pushes appear in Uptime Kuma           | Check the Push URL and run a test push                             |
+| HTTP 401 / 403 / 404                      | Check the Push URL or monitor ID in Uptime Kuma                    |
+| SSL or TLS errors                         | Check the certificate and reachability of the Uptime Kuma instance |
+| Services cannot be started                | Start the application with sufficient privileges                   |
+| Configuration is not saved to ProgramData | The agent automatically uses the AppData fallback                  |
+
+---
+
+## 📁 Project structure
+
+```text
+.
+├── releases
+├── build
+├── tools
+├── config.example.json
+├── Build.cmd
+├── Publish.cmd
+├── BuildMsi.cmd
+├── BuildInstaller.cmd
+├── Install.cmd
+└── Uninstall.cmd
+```
+
+---
+
+## 🟢 Summary
+
+The **Uptime Kuma Tray Agent** is a lightweight Windows agent for local monitoring, service supervision, drive checks, and Uptime Kuma push monitoring — including GUI, tray integration, Windows service support, and MSI installer.
