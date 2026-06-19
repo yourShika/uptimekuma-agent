@@ -14,6 +14,26 @@ public static class I18n
         ["Deutsch"] = "German",
         ["Polski"] = "Polish",
         ["Sprache"] = "Language",
+        ["Name"] = "Name",
+        ["Status"] = "Status",
+        ["Host"] = "Host",
+        ["Port"] = "Port",
+        ["Timeout"] = "Timeout",
+        ["HTTP"] = "HTTP",
+        ["Push-URL"] = "Push URL",
+        ["TCP-Log"] = "TCP log",
+        ["Reconnect"] = "Reconnect",
+        ["Agent"] = "Agent",
+        ["Monitoring"] = "Monitoring",
+        ["Version"] = "Version",
+        ["Watchdog"] = "Watchdog",
+        ["Ping-Checks"] = "Ping checks",
+        ["TCP-Checks"] = "TCP checks",
+        ["Logs"] = "Logs",
+        ["Ping"] = "Ping",
+        ["TCP"] = "TCP",
+        ["Dienst"] = "Service",
+        ["Laufwerk"] = "Drive",
         ["Fenster öffnen"] = "Open window",
         ["Monitoring starten"] = "Start monitoring",
         ["Monitoring stoppen"] = "Stop monitoring",
@@ -88,9 +108,26 @@ public static class I18n
         ["Konfiguration prüfen"] = "Check configuration",
         ["Konfiguration gespeichert"] = "Configuration saved",
         ["Konfiguration gespeichert."] = "Configuration saved.",
+        ["Sprache geändert"] = "Language changed",
+        ["Die Sprache wurde gespeichert. Um die Sprache vollständig zu ändern, muss die App neu gestartet werden."] = "The language has been saved. To fully change the language, the app must be restarted.",
         ["Konfiguration konnte nicht gespeichert werden: "] = "Configuration could not be saved: ",
         ["Fehler"] = "Error",
+        ["Warnung"] = "Warning",
+        ["Deaktiviert"] = "Disabled",
+        ["Unbekannt"] = "Unknown",
         ["Läuft"] = "Running",
+        ["Gestoppt"] = "Stopped",
+        ["Pausiert"] = "Paused",
+        ["Startet"] = "Starting",
+        ["Stoppt"] = "Stopping",
+        ["Wird fortgesetzt"] = "Continuing",
+        ["Pausiert gerade"] = "Pausing",
+        ["Hell"] = "Light",
+        ["Dunkel"] = "Dark",
+        ["Debug"] = "Debug",
+        ["Ein- und ausgehend"] = "Incoming and outgoing",
+        ["Eingehend"] = "Incoming",
+        ["Ausgehend"] = "Outgoing",
         ["aktiv"] = "active",
         ["inaktiv"] = "inactive",
         ["Monitoring aktiv"] = "Monitoring active",
@@ -107,12 +144,41 @@ public static class I18n
         ["Check wurde nicht gefunden."] = "Check was not found.",
         ["Testergebnis"] = "Test result",
         ["Lokale Dienste werden geladen..."] = "Loading local services...",
+        ["Lokale Dienste konnten nicht geladen werden"] = "Local services could not be loaded",
         ["lokale Dienste geladen"] = "local services loaded",
         ["Dienste laden"] = "Load services",
         ["Dienste konnten nicht geladen werden"] = "Services could not be loaded",
         ["Bitte zuerst einen Dienst-Check oder lokalen Dienst auswählen."] = "Please select a service check or local service first.",
         ["Dienstaktion"] = "Service action",
+        ["Dienst {0} hart neu starten?\r\n\r\nWenn der Dienst beim Stoppen hängen bleibt, wird der zugehörige Prozess erzwungen beendet."] = "Force restart service {0}?\r\n\r\nIf the service gets stuck while stopping, the related process will be forcefully terminated.",
         ["Unbekannte Aktion"] = "Unknown action",
+        ["Lokale Dienste konnten nicht aufgelistet werden"] = "Local services could not be listed",
+        ["Dienst existiert nicht"] = "Service does not exist",
+        ["Dienstname fehlt"] = "Service name is missing",
+        ["Dienststatus gelesen"] = "Service status read",
+        ["Dienstprüfung fehlgeschlagen"] = "Service check failed",
+        ["Dienst läuft bereits"] = "Service is already running",
+        ["Dienst gestartet"] = "Service started",
+        ["Timeout beim Starten des Dienstes"] = "Timeout while starting the service",
+        ["Dienst konnte nicht gestartet werden"] = "Service could not be started",
+        ["Dienst ist bereits gestoppt"] = "Service is already stopped",
+        ["Dienst konnte nicht gestoppt werden"] = "Service could not be stopped",
+        ["Dienst akzeptiert kein Stop-Signal"] = "Service does not accept a stop signal",
+        ["Dienst gestoppt"] = "Service stopped",
+        ["Timeout beim Stoppen des Dienstes"] = "Timeout while stopping the service",
+        ["Dienstprozess {0} wurde erzwungen beendet"] = "Service process {0} was forcefully terminated",
+        ["Dienstprozess beendet, Status unklar"] = "Service process terminated, status unclear",
+        ["keine Rechte zum Lesen des Dienstes"] = "No permission to read the service",
+        ["Service Control Manager konnte nicht geöffnet werden"] = "Service Control Manager could not be opened",
+        ["keine Rechte zum Starten des Dienstes"] = "No permission to start the service",
+        ["Dienst {0} existiert nicht"] = "Service {0} does not exist",
+        ["Dienststatus ist {0}"] = "Service status is {0}",
+        ["Dienstprozess konnte nicht beendet werden"] = "Service process could not be terminated",
+        ["Prozess {0} für Dienst {1} reagiert nicht"] = "Process {0} for service {1} is not responding",
+        ["Dienstprozess {0} für {1} wurde erzwungen beendet"] = "Service process {0} for {1} was forcefully terminated",
+        ["Dienstprozess {0} für {1} existiert nicht mehr"] = "Service process {0} for {1} no longer exists",
+        ["keine Rechte zum Beenden des Dienstprozesses"] = "No permission to terminate the service process",
+        ["Dienststatus konnte nicht gelesen werden"] = "Service status could not be read",
         ["Agent läuft im Infobereich weiter."] = "Agent keeps running in the notification area.",
         ["Autostart und ausgewählte Daten wurden entfernt. Der Programmordner kann danach gelöscht werden."] = "Autostart and selected data were removed. The application folder can be deleted afterwards.",
         ["Löschen bestätigen"] = "Confirm deletion",
@@ -175,6 +241,26 @@ public static class I18n
         ["Deutsch"] = "Niemiecki",
         ["Polski"] = "Polski",
         ["Sprache"] = "Język",
+        ["Name"] = "Nazwa",
+        ["Status"] = "Status",
+        ["Host"] = "Host",
+        ["Port"] = "Port",
+        ["Timeout"] = "Limit czasu",
+        ["HTTP"] = "HTTP",
+        ["Push-URL"] = "Adres push",
+        ["TCP-Log"] = "Log TCP",
+        ["Reconnect"] = "Ponowne połączenie",
+        ["Agent"] = "Agent",
+        ["Monitoring"] = "Monitoring",
+        ["Version"] = "Wersja",
+        ["Watchdog"] = "Watchdog",
+        ["Ping-Checks"] = "Testy ping",
+        ["TCP-Checks"] = "Testy TCP",
+        ["Logs"] = "Logi",
+        ["Ping"] = "Ping",
+        ["TCP"] = "TCP",
+        ["Dienst"] = "Usługa",
+        ["Laufwerk"] = "Dysk",
         ["Fenster öffnen"] = "Otwórz okno",
         ["Monitoring starten"] = "Uruchom monitoring",
         ["Monitoring stoppen"] = "Zatrzymaj monitoring",
@@ -249,9 +335,26 @@ public static class I18n
         ["Konfiguration prüfen"] = "Sprawdź konfigurację",
         ["Konfiguration gespeichert"] = "Konfiguracja zapisana",
         ["Konfiguration gespeichert."] = "Konfiguracja zapisana.",
+        ["Sprache geändert"] = "Język zmieniony",
+        ["Die Sprache wurde gespeichert. Um die Sprache vollständig zu ändern, muss die App neu gestartet werden."] = "Język został zapisany. Aby w pełni zmienić język, trzeba ponownie uruchomić aplikację.",
         ["Konfiguration konnte nicht gespeichert werden: "] = "Nie można zapisać konfiguracji: ",
         ["Fehler"] = "Błąd",
+        ["Warnung"] = "Ostrzeżenie",
+        ["Deaktiviert"] = "Wyłączony",
+        ["Unbekannt"] = "Nieznany",
         ["Läuft"] = "Działa",
+        ["Gestoppt"] = "Zatrzymany",
+        ["Pausiert"] = "Wstrzymany",
+        ["Startet"] = "Uruchamianie",
+        ["Stoppt"] = "Zatrzymywanie",
+        ["Wird fortgesetzt"] = "Wznawianie",
+        ["Pausiert gerade"] = "Wstrzymywanie",
+        ["Hell"] = "Jasny",
+        ["Dunkel"] = "Ciemny",
+        ["Debug"] = "Debug",
+        ["Ein- und ausgehend"] = "Przychodzące i wychodzące",
+        ["Eingehend"] = "Przychodzące",
+        ["Ausgehend"] = "Wychodzące",
         ["aktiv"] = "aktywny",
         ["inaktiv"] = "nieaktywny",
         ["Monitoring aktiv"] = "Monitoring aktywny",
@@ -268,12 +371,41 @@ public static class I18n
         ["Check wurde nicht gefunden."] = "Nie znaleziono testu.",
         ["Testergebnis"] = "Wynik testu",
         ["Lokale Dienste werden geladen..."] = "Wczytywanie usług lokalnych...",
+        ["Lokale Dienste konnten nicht geladen werden"] = "Nie można wczytać usług lokalnych",
         ["lokale Dienste geladen"] = "usług lokalnych wczytano",
         ["Dienste laden"] = "Wczytaj usługi",
         ["Dienste konnten nicht geladen werden"] = "Nie można wczytać usług",
         ["Bitte zuerst einen Dienst-Check oder lokalen Dienst auswählen."] = "Najpierw wybierz test usługi lub usługę lokalną.",
         ["Dienstaktion"] = "Akcja usługi",
+        ["Dienst {0} hart neu starten?\r\n\r\nWenn der Dienst beim Stoppen hängen bleibt, wird der zugehörige Prozess erzwungen beendet."] = "Wymusić restart usługi {0}?\r\n\r\nJeśli usługa zawiesi się podczas zatrzymywania, powiązany proces zostanie wymuszony zakończony.",
         ["Unbekannte Aktion"] = "Nieznana akcja",
+        ["Lokale Dienste konnten nicht aufgelistet werden"] = "Nie można wyświetlić listy usług lokalnych",
+        ["Dienst existiert nicht"] = "Usługa nie istnieje",
+        ["Dienstname fehlt"] = "Brakuje nazwy usługi",
+        ["Dienststatus gelesen"] = "Odczytano status usługi",
+        ["Dienstprüfung fehlgeschlagen"] = "Sprawdzenie usługi nie powiodło się",
+        ["Dienst läuft bereits"] = "Usługa już działa",
+        ["Dienst gestartet"] = "Usługa uruchomiona",
+        ["Timeout beim Starten des Dienstes"] = "Limit czasu podczas uruchamiania usługi",
+        ["Dienst konnte nicht gestartet werden"] = "Nie można uruchomić usługi",
+        ["Dienst ist bereits gestoppt"] = "Usługa jest już zatrzymana",
+        ["Dienst konnte nicht gestoppt werden"] = "Nie można zatrzymać usługi",
+        ["Dienst akzeptiert kein Stop-Signal"] = "Usługa nie akceptuje sygnału zatrzymania",
+        ["Dienst gestoppt"] = "Usługa zatrzymana",
+        ["Timeout beim Stoppen des Dienstes"] = "Limit czasu podczas zatrzymywania usługi",
+        ["Dienstprozess {0} wurde erzwungen beendet"] = "Proces usługi {0} został wymuszony zakończony",
+        ["Dienstprozess beendet, Status unklar"] = "Proces usługi zakończony, status niejasny",
+        ["keine Rechte zum Lesen des Dienstes"] = "Brak uprawnień do odczytu usługi",
+        ["Service Control Manager konnte nicht geöffnet werden"] = "Nie można otworzyć Service Control Manager",
+        ["keine Rechte zum Starten des Dienstes"] = "Brak uprawnień do uruchomienia usługi",
+        ["Dienst {0} existiert nicht"] = "Usługa {0} nie istnieje",
+        ["Dienststatus ist {0}"] = "Status usługi to {0}",
+        ["Dienstprozess konnte nicht beendet werden"] = "Nie można zakończyć procesu usługi",
+        ["Prozess {0} für Dienst {1} reagiert nicht"] = "Proces {0} dla usługi {1} nie odpowiada",
+        ["Dienstprozess {0} für {1} wurde erzwungen beendet"] = "Proces usługi {0} dla {1} został wymuszony zakończony",
+        ["Dienstprozess {0} für {1} existiert nicht mehr"] = "Proces usługi {0} dla {1} już nie istnieje",
+        ["keine Rechte zum Beenden des Dienstprozesses"] = "Brak uprawnień do zakończenia procesu usługi",
+        ["Dienststatus konnte nicht gelesen werden"] = "Nie można odczytać statusu usługi",
         ["Agent läuft im Infobereich weiter."] = "Agent działa dalej w zasobniku.",
         ["Autostart und ausgewählte Daten wurden entfernt. Der Programmordner kann danach gelöscht werden."] = "Autostart i wybrane dane zostały usunięte. Folder programu można potem usunąć.",
         ["Löschen bestätigen"] = "Potwierdź usunięcie",
@@ -369,6 +501,76 @@ public static class I18n
     public static string F(string text, params object[] args)
     {
         return string.Format(CultureInfo.CurrentCulture, T(text), args);
+    }
+
+    public static string CheckTypeName(CheckType type)
+    {
+        return type switch
+        {
+            CheckType.Ping => T("Ping"),
+            CheckType.Tcp => T("TCP"),
+            CheckType.Service => T("Dienst"),
+            CheckType.Drive => T("Laufwerk"),
+            CheckType.Watchdog => T("Watchdog"),
+            _ => T("Unbekannt")
+        };
+    }
+
+    public static string CheckStateName(UptimeKumaTrayAgent.Models.CheckState state)
+    {
+        return state switch
+        {
+            UptimeKumaTrayAgent.Models.CheckState.Up => T("OK"),
+            UptimeKumaTrayAgent.Models.CheckState.Down => T("Fehler"),
+            UptimeKumaTrayAgent.Models.CheckState.Warning => T("Warnung"),
+            UptimeKumaTrayAgent.Models.CheckState.Disabled => T("Deaktiviert"),
+            _ => T("Unbekannt")
+        };
+    }
+
+    public static string ServiceStatusName(string? status)
+    {
+        return status?.Trim().ToLowerInvariant() switch
+        {
+            "running" => T("Läuft"),
+            "stopped" => T("Gestoppt"),
+            "paused" => T("Pausiert"),
+            "startpending" => T("Startet"),
+            "stoppending" => T("Stoppt"),
+            "continuepending" => T("Wird fortgesetzt"),
+            "pausepending" => T("Pausiert gerade"),
+            _ => T("Unbekannt")
+        };
+    }
+
+    public static string TcpDirectionName(string? value)
+    {
+        return TcpConnectionLogDirections.Normalize(value) switch
+        {
+            TcpConnectionLogDirections.Incoming => T("Eingehend"),
+            TcpConnectionLogDirections.Outgoing => T("Ausgehend"),
+            _ => T("Ein- und ausgehend")
+        };
+    }
+
+    public static string LogLevelName(string? value)
+    {
+        return LogLevelKinds.Normalize(value) switch
+        {
+            "Warnung" => T("Warnung"),
+            "Fehler" => T("Fehler"),
+            "Debug" => T("Debug"),
+            _ => T("Info")
+        };
+    }
+
+    public static string ThemeName(string? value)
+    {
+        return ThemeModes.Normalize(value) switch
+        {
+            "Dark" => T("Dunkel"),
+            _ => T("Hell")
+        };
     }
 
     public static string LanguageDisplayName(string language)

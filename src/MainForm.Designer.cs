@@ -126,14 +126,14 @@ partial class MainForm
         tabPing.Name = "tabPing";
         tabPing.Padding = new Padding(10);
         tabPing.Size = new Size(1176, 623);
-        tabPing.Text = "Ping-Checks";
+        tabPing.Text = I18n.T("Ping-Checks");
         tabPing.UseVisualStyleBackColor = true;
 
         tabTcp.Location = new Point(4, 24);
         tabTcp.Name = "tabTcp";
         tabTcp.Padding = new Padding(10);
         tabTcp.Size = new Size(1176, 623);
-        tabTcp.Text = "TCP-Checks";
+        tabTcp.Text = I18n.T("TCP-Checks");
         tabTcp.UseVisualStyleBackColor = true;
 
         tabServices.Location = new Point(4, 24);
@@ -154,7 +154,7 @@ partial class MainForm
         tabLogs.Name = "tabLogs";
         tabLogs.Padding = new Padding(10);
         tabLogs.Size = new Size(1176, 623);
-        tabLogs.Text = "Logs";
+        tabLogs.Text = I18n.T("Logs");
         tabLogs.UseVisualStyleBackColor = true;
 
         statusStrip.Items.AddRange(new ToolStripItem[] { statusLabel });

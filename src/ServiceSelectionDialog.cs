@@ -73,7 +73,7 @@ public sealed class ServiceSelectionDialog : Form
 
         public override string ToString()
         {
-            return $"{Service.DisplayName} ({Service.ServiceName}) - {Service.Status}";
+            return $"{Service.DisplayName} ({Service.ServiceName}) - {I18n.ServiceStatusName(Service.Status)}";
         }
     }
 }

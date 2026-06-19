@@ -69,7 +69,7 @@ public sealed class CheckEditorForm : Form
     {
         using var form = new CheckEditorForm(I18n.T("Ping-Check"));
         var enabled = form.AddCheck(I18n.T("Aktiv"), check.Enabled);
-        var name = form.AddText("Name", check.Name);
+        var name = form.AddText(I18n.T("Name"), check.Name);
         var host = form.AddText(I18n.T("Hostname oder IP-Adresse"), check.Host);
         var pushUrl = form.AddPushUrl(I18n.T("Uptime-Kuma-Push-URL"), check.PushUrl, maskPushUrl);
         var interval = form.AddNumber(I18n.T("Intervall in Sekunden"), check.IntervalSeconds, 5, 86400);
@@ -119,9 +119,9 @@ public sealed class CheckEditorForm : Form
     {
         using var form = new CheckEditorForm(I18n.T("TCP-Port-Check"));
         var enabled = form.AddCheck(I18n.T("Aktiv"), check.Enabled);
-        var name = form.AddText("Name", check.Name);
+        var name = form.AddText(I18n.T("Name"), check.Name);
         var host = form.AddText(I18n.T("Hostname oder IP-Adresse"), check.Host);
-        var port = form.AddNumber("Port", check.Port, 1, 65535);
+        var port = form.AddNumber(I18n.T("Port"), check.Port, 1, 65535);
         var pushUrl = form.AddPushUrl(I18n.T("Uptime-Kuma-Push-URL"), check.PushUrl, maskPushUrl);
         var interval = form.AddNumber(I18n.T("Intervall in Sekunden"), check.IntervalSeconds, 5, 86400);
         var timeout = form.AddNumber(I18n.T("Timeout in Millisekunden"), check.TimeoutMs, 500, 120000);
@@ -130,7 +130,7 @@ public sealed class CheckEditorForm : Form
         var restartCooldown = form.AddNumber(I18n.T("Neustart-Cooldown (s)"), check.RestartServicesCooldownSeconds, 30, 86400);
         var restartForceKill = form.AddCheck(I18n.T("Bei Stop-Timeout Prozess beenden"), check.ForceKillRestartServicesOnTimeout);
         var logConnections = form.AddCheck(I18n.T("TCP-Verbindungen ins Log schreiben"), check.LogTcpConnections);
-        var connectionDirection = form.AddCombo(I18n.T("TCP-Log Richtung"), TcpConnectionLogDirections.All, TcpConnectionLogDirections.Normalize(check.TcpConnectionLogDirection));
+        var connectionDirection = form.AddCombo(I18n.T("TCP-Log Richtung"), TcpConnectionLogDirections.All, TcpConnectionLogDirections.Normalize(check.TcpConnectionLogDirection), I18n.TcpDirectionName);
         var note = form.AddText(I18n.T("Beschreibung / Notiz"), check.Note, multiline: true);
 
         form._validator = () =>
@@ -170,7 +170,7 @@ public sealed class CheckEditorForm : Form
         check.RestartServicesCooldownSeconds = (int)restartCooldown.Value;
         check.ForceKillRestartServicesOnTimeout = restartForceKill.Checked;
         check.LogTcpConnections = logConnections.Checked;
-        check.TcpConnectionLogDirection = connectionDirection.SelectedItem?.ToString() ?? TcpConnectionLogDirections.Both;
+        check.TcpConnectionLogDirection = GetComboValue(connectionDirection, TcpConnectionLogDirections.Both);
         check.Note = note.Text.Trim();
         check.Normalize(30, 3000);
         return true;
@@ -182,7 +182,7 @@ public sealed class CheckEditorForm : Form
         var enabled = form.AddCheck(I18n.T("Aktiv"), check.Enabled);
         var displayName = form.AddText(I18n.T("Anzeigename"), check.DisplayName);
         var serviceName = form.AddText(I18n.T("Dienstname"), check.ServiceName);
-        var expected = form.AddCombo(I18n.T("Erwarteter Status"), WindowsServiceStates.All, WindowsServiceStates.Normalize(check.ExpectedStatus));
+        var expected = form.AddCombo(I18n.T("Erwarteter Status"), WindowsServiceStates.All, WindowsServiceStates.Normalize(check.ExpectedStatus), I18n.ServiceStatusName);
         var pushUrl = form.AddPushUrl(I18n.T("Uptime-Kuma-Push-URL"), check.PushUrl, maskPushUrl);
         var interval = form.AddNumber(I18n.T("Intervall in Sekunden"), check.IntervalSeconds, 5, 86400);
         var restart = form.AddCheck(I18n.T("Dienst automatisch neu starten"), check.RestartIfStopped);
@@ -215,7 +215,7 @@ public sealed class CheckEditorForm : Form
         check.Enabled = enabled.Checked;
         check.DisplayName = displayName.Text.Trim();
         check.ServiceName = serviceName.Text.Trim();
-        check.ExpectedStatus = expected.SelectedItem?.ToString() ?? "Running";
+        check.ExpectedStatus = GetComboValue(expected, "Running");
         check.PushUrl = pushUrl.Text.Trim();
         check.IntervalSeconds = (int)interval.Value;
         check.RestartIfStopped = restart.Checked;
@@ -232,7 +232,7 @@ public sealed class CheckEditorForm : Form
     {
         using var form = new CheckEditorForm(I18n.T("Laufwerks-Check"));
         var enabled = form.AddCheck(I18n.T("Aktiv"), check.Enabled);
-        var name = form.AddText("Name", check.Name);
+        var name = form.AddText(I18n.T("Name"), check.Name);
         var path = form.AddText(I18n.T("Pfad / Laufwerk"), check.Path);
         var pushUrl = form.AddPushUrl(I18n.T("Uptime-Kuma-Push-URL"), check.PushUrl, maskPushUrl);
         var interval = form.AddNumber(I18n.T("Intervall in Sekunden"), check.IntervalSeconds, 5, 86400);
@@ -355,11 +355,13 @@ public sealed class CheckEditorForm : Form
         return check;
     }
 
-    private ComboBox AddCombo(string label, IEnumerable<string> values, string selected)
+    private ComboBox AddCombo(string label, IEnumerable<string> values, string selected, Func<string, string>? displaySelector = null)
     {
         var combo = new ComboBox { Dock = DockStyle.Left, Width = 220, DropDownStyle = ComboBoxStyle.DropDownList };
-        combo.Items.AddRange(values.Cast<object>().ToArray());
-        combo.SelectedItem = selected;
+        combo.Items.AddRange(values
+            .Select(value => displaySelector is null ? (object)value : new DisplayOption(value, displaySelector))
+            .ToArray());
+        SelectComboValue(combo, selected);
         if (combo.SelectedIndex < 0 && combo.Items.Count > 0)
         {
             combo.SelectedIndex = 0;
@@ -367,6 +369,35 @@ public sealed class CheckEditorForm : Form
 
         AddRow(label, combo, 32);
         return combo;
+    }
+
+    private static string GetComboValue(ComboBox combo, string fallback)
+    {
+        return combo.SelectedItem switch
+        {
+            DisplayOption option => option.Value,
+            string value when !string.IsNullOrWhiteSpace(value) => value,
+            _ => fallback
+        };
+    }
+
+    private static void SelectComboValue(ComboBox combo, string value)
+    {
+        foreach (var item in combo.Items)
+        {
+            var itemValue = item switch
+            {
+                DisplayOption option => option.Value,
+                string text => text,
+                _ => item?.ToString() ?? ""
+            };
+
+            if (string.Equals(itemValue, value, StringComparison.OrdinalIgnoreCase))
+            {
+                combo.SelectedItem = item;
+                return;
+            }
+        }
     }
 
     private ServiceRestartSelection AddServiceRestartSelector(
@@ -437,5 +468,23 @@ public sealed class CheckEditorForm : Form
         public string DisplayText => SelectedServiceNames.Count == 0
             ? I18n.T("Keine")
             : string.Join(", ", SelectedServiceNames);
+    }
+
+    private sealed class DisplayOption
+    {
+        private readonly Func<string, string> _displaySelector;
+
+        public DisplayOption(string value, Func<string, string> displaySelector)
+        {
+            Value = value;
+            _displaySelector = displaySelector;
+        }
+
+        public string Value { get; }
+
+        public override string ToString()
+        {
+            return _displaySelector(Value);
+        }
     }
 }

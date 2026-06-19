@@ -198,11 +198,11 @@ public partial class MainForm : Form
         statusTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 170));
         statusTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         statusBox.Controls.Add(statusTable);
-        _lblAgentStatus = AddStatusRow(statusTable, "Agent");
-        _lblMonitoring = AddStatusRow(statusTable, "Monitoring");
+        _lblAgentStatus = AddStatusRow(statusTable, I18n.T("Agent"));
+        _lblMonitoring = AddStatusRow(statusTable, I18n.T("Monitoring"));
         _lblLastRun = AddStatusRow(statusTable, I18n.T("Letzter Lauf"));
         _lblLastError = AddStatusRow(statusTable, I18n.T("Letzter Fehler"));
-        _lblVersion = AddStatusRow(statusTable, "Version");
+        _lblVersion = AddStatusRow(statusTable, I18n.T("Version"));
         _lblComputer = AddStatusRow(statusTable, I18n.T("Computername"));
         top.Controls.Add(statusBox, 0, 0);
 
@@ -237,8 +237,8 @@ public partial class MainForm : Form
         _numHttpTimeout = AddNumber(globalTable, I18n.T("HTTP-Timeout (ms)"), 500, 120000, 5000, 2, 0);
         _numTcpTimeout = AddNumber(globalTable, I18n.T("TCP-Timeout (ms)"), 500, 120000, 3000, 0, 1);
         _numPingTimeout = AddNumber(globalTable, I18n.T("Ping-Timeout (ms)"), 500, 120000, 3000, 2, 1);
-        _cmbLogLevel = AddCombo(globalTable, I18n.T("Log-Level"), LogLevelKinds.All, 0, 2);
-        _cmbTheme = AddCombo(globalTable, I18n.T("Darstellung"), ThemeModes.All, 2, 2);
+        _cmbLogLevel = AddOptionCombo(globalTable, I18n.T("Log-Level"), LogLevelKinds.All, I18n.LogLevelName, 0, 2);
+        _cmbTheme = AddOptionCombo(globalTable, I18n.T("Darstellung"), ThemeModes.All, I18n.ThemeName, 2, 2);
         _cmbLanguage = AddLanguageCombo(globalTable, I18n.T("Sprache"), 0, 3);
         _chkMaskPushUrls = AddCheck(globalTable, I18n.T("Push-URLs maskieren"), 2, 3);
         _chkAutostart = AddCheck(globalTable, I18n.T("Autostart aktivieren"), 0, 4);
@@ -248,13 +248,13 @@ public partial class MainForm : Form
         _chkMonitoringAutoStart = AddCheck(globalTable, I18n.T("Monitoring automatisch starten"), 0, 6);
         _cmbTheme.SelectedIndexChanged += (_, _) =>
         {
-            _config.Global.Theme = _cmbTheme.SelectedItem?.ToString() ?? "Light";
+            _config.Global.Theme = GetComboValue(_cmbTheme, "Light");
             _theme = ThemeModes.PaletteFor(_config.Global.Theme);
             ApplyTheme();
         };
         settingsArea.Controls.Add(globalBox, 0, 0);
 
-        var watchdogBox = new GroupBox { Text = "Watchdog", Dock = DockStyle.Fill };
+        var watchdogBox = new GroupBox { Text = I18n.T("Watchdog"), Dock = DockStyle.Fill };
         var watchdogTable = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(10) };
         watchdogTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 210));
         watchdogTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -268,17 +268,17 @@ public partial class MainForm : Form
 
         _statusGrid = CreateGrid();
         _statusGrid.Columns.Add("Type", I18n.T("Typ"));
-        _statusGrid.Columns.Add("Name", "Name");
+        _statusGrid.Columns.Add("Name", I18n.T("Name"));
         _statusGrid.Columns.Add("Target", I18n.T("Ziel"));
         _statusGrid.Columns.Add("Enabled", I18n.T("Aktiv"));
-        _statusGrid.Columns.Add("State", "Status");
+        _statusGrid.Columns.Add("State", I18n.T("Status"));
         _statusGrid.Columns.Add("Ping", I18n.T("Antwortzeit"));
         _statusGrid.Columns.Add("LastRun", I18n.T("Letzter Check"));
         _statusGrid.Columns.Add("LastOk", I18n.T("Letzter OK"));
         _statusGrid.Columns.Add("Error", I18n.T("Letzter Fehler"));
         _statusGrid.Columns.Add("Next", I18n.T("Nächste Ausführung"));
         _statusGrid.Columns.Add("Push", I18n.T("Letzter Push"));
-        _statusGrid.Columns.Add("Http", "HTTP");
+        _statusGrid.Columns.Add("Http", I18n.T("HTTP"));
         root.Controls.Add(_statusGrid, 0, 2);
     }
 
@@ -286,13 +286,13 @@ public partial class MainForm : Form
     {
         _pingGrid = CreateGrid();
         _pingGrid.Columns.Add("Enabled", I18n.T("Aktiv"));
-        _pingGrid.Columns.Add("Name", "Name");
-        _pingGrid.Columns.Add("Host", "Host");
+        _pingGrid.Columns.Add("Name", I18n.T("Name"));
+        _pingGrid.Columns.Add("Host", I18n.T("Host"));
         _pingGrid.Columns.Add("Interval", I18n.T("Intervall"));
-        _pingGrid.Columns.Add("Timeout", "Timeout");
+        _pingGrid.Columns.Add("Timeout", I18n.T("Timeout"));
         _pingGrid.Columns.Add("Machine", I18n.T("Maschineninfos"));
         _pingGrid.Columns.Add("RestartServices", I18n.T("Fehleraktion"));
-        _pingGrid.Columns.Add("Push", "Push-URL");
+        _pingGrid.Columns.Add("Push", I18n.T("Push-URL"));
         _pingGrid.Columns.Add("Note", I18n.T("Notiz"));
 
         var buttons = CreateButtonPanel(
@@ -308,15 +308,15 @@ public partial class MainForm : Form
     {
         _tcpGrid = CreateGrid();
         _tcpGrid.Columns.Add("Enabled", I18n.T("Aktiv"));
-        _tcpGrid.Columns.Add("Name", "Name");
-        _tcpGrid.Columns.Add("Host", "Host");
-        _tcpGrid.Columns.Add("Port", "Port");
+        _tcpGrid.Columns.Add("Name", I18n.T("Name"));
+        _tcpGrid.Columns.Add("Host", I18n.T("Host"));
+        _tcpGrid.Columns.Add("Port", I18n.T("Port"));
         _tcpGrid.Columns.Add("Interval", I18n.T("Intervall"));
-        _tcpGrid.Columns.Add("Timeout", "Timeout");
+        _tcpGrid.Columns.Add("Timeout", I18n.T("Timeout"));
         _tcpGrid.Columns.Add("Machine", I18n.T("Maschineninfos"));
         _tcpGrid.Columns.Add("RestartServices", I18n.T("Fehleraktion"));
-        _tcpGrid.Columns.Add("TcpLog", "TCP-Log");
-        _tcpGrid.Columns.Add("Push", "Push-URL");
+        _tcpGrid.Columns.Add("TcpLog", I18n.T("TCP-Log"));
+        _tcpGrid.Columns.Add("Push", I18n.T("Push-URL"));
         _tcpGrid.Columns.Add("Note", I18n.T("Notiz"));
 
         var buttons = CreateButtonPanel(
@@ -345,7 +345,7 @@ public partial class MainForm : Form
         _serviceGrid.Columns.Add("Restart", I18n.T("Auto-Neustart"));
         _serviceGrid.Columns.Add("Machine", I18n.T("Maschineninfos"));
         _serviceGrid.Columns.Add("RestartServices", I18n.T("Fehleraktion"));
-        _serviceGrid.Columns.Add("Push", "Push-URL");
+        _serviceGrid.Columns.Add("Push", I18n.T("Push-URL"));
         _serviceGrid.Columns.Add("Note", I18n.T("Notiz"));
         root.Controls.Add(_serviceGrid, 0, 0);
 
@@ -365,7 +365,7 @@ public partial class MainForm : Form
         _availableServicesGrid = CreateGrid();
         _availableServicesGrid.Columns.Add("DisplayName", I18n.T("Lokaler Dienst"));
         _availableServicesGrid.Columns.Add("ServiceName", I18n.T("Dienstname"));
-        _availableServicesGrid.Columns.Add("Status", "Status");
+        _availableServicesGrid.Columns.Add("Status", I18n.T("Status"));
         _availableServicesGrid.Columns.Add("CanStop", I18n.T("Stoppbar"));
         root.Controls.Add(_availableServicesGrid, 0, 2);
     }
@@ -374,15 +374,15 @@ public partial class MainForm : Form
     {
         _driveGrid = CreateGrid();
         _driveGrid.Columns.Add("Enabled", I18n.T("Aktiv"));
-        _driveGrid.Columns.Add("Name", "Name");
+        _driveGrid.Columns.Add("Name", I18n.T("Name"));
         _driveGrid.Columns.Add("Path", I18n.T("Pfad"));
         _driveGrid.Columns.Add("Interval", I18n.T("Intervall"));
         _driveGrid.Columns.Add("MinPercent", I18n.T("Min. frei %"));
         _driveGrid.Columns.Add("MinGb", I18n.T("Min. frei GB"));
-        _driveGrid.Columns.Add("Reconnect", "Reconnect");
+        _driveGrid.Columns.Add("Reconnect", I18n.T("Reconnect"));
         _driveGrid.Columns.Add("Details", I18n.T("Logdetails"));
         _driveGrid.Columns.Add("Machine", I18n.T("Maschineninfos"));
-        _driveGrid.Columns.Add("Push", "Push-URL");
+        _driveGrid.Columns.Add("Push", I18n.T("Push-URL"));
         _driveGrid.Columns.Add("Note", I18n.T("Notiz"));
 
         var buttons = CreateButtonPanel(
@@ -428,8 +428,8 @@ public partial class MainForm : Form
         _numPingTimeout.Value = _config.Global.PingTimeoutMs;
         _chkSendMachineInfo.Checked = _config.Global.SendMachineInfo;
         _chkMaskPushUrls.Checked = _config.Global.MaskPushUrls;
-        _cmbLogLevel.SelectedItem = LogLevelKinds.Normalize(_config.Global.LogLevel);
-        _cmbTheme.SelectedItem = ThemeModes.Normalize(_config.Global.Theme);
+        SelectComboValue(_cmbLogLevel, LogLevelKinds.Normalize(_config.Global.LogLevel));
+        SelectComboValue(_cmbTheme, ThemeModes.Normalize(_config.Global.Theme));
         SelectLanguageOption(_config.Global.Language);
         _chkAutostart.Checked = _config.Global.Autostart || _autostart.IsEnabled();
         _chkMonitoringAutoStart.Checked = _config.Global.MonitoringAutoStart;
@@ -452,8 +452,8 @@ public partial class MainForm : Form
         _config.Global.PingTimeoutMs = (int)_numPingTimeout.Value;
         _config.Global.SendMachineInfo = _chkSendMachineInfo.Checked;
         _config.Global.MaskPushUrls = _chkMaskPushUrls.Checked;
-        _config.Global.LogLevel = _cmbLogLevel.SelectedItem?.ToString() ?? "Info";
-        _config.Global.Theme = _cmbTheme.SelectedItem?.ToString() ?? "Light";
+        _config.Global.LogLevel = GetComboValue(_cmbLogLevel, "Info");
+        _config.Global.Theme = GetComboValue(_cmbTheme, "Light");
         _config.Global.Language = GetSelectedLanguage();
         _config.Global.Autostart = _chkAutostart.Checked;
         _config.Global.MonitoringAutoStart = _chkMonitoringAutoStart.Checked;
@@ -470,7 +470,9 @@ public partial class MainForm : Form
 
     private bool SaveConfig(bool showMessage)
     {
+        var previousLanguage = AppLanguages.Normalize(_config.Global.Language);
         ApplyControlsToConfig();
+        var languageChanged = !string.Equals(previousLanguage, AppLanguages.Normalize(_config.Global.Language), StringComparison.OrdinalIgnoreCase);
         if (!ValidateConfig(out var validationMessage))
         {
             MessageBox.Show(this, validationMessage, I18n.T("Konfiguration prüfen"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -480,7 +482,11 @@ public partial class MainForm : Form
         try
         {
             _configService.Save(_config);
-            I18n.Apply(_config.Global.Language);
+            if (!languageChanged)
+            {
+                I18n.Apply(_config.Global.Language);
+            }
+
             _logger.SetLevel(_config.Global.LogLevel);
             if (_config.Global.Autostart)
             {
@@ -504,7 +510,11 @@ public partial class MainForm : Form
             statusLabel.Text = I18n.T("Konfiguration gespeichert");
             if (showMessage)
             {
-                MessageBox.Show(this, I18n.T("Konfiguration gespeichert."), "Uptime Kuma Tray Agent", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                var message = languageChanged
+                    ? I18n.T("Konfiguration gespeichert.") + "\r\n\r\n" + I18n.T("Die Sprache wurde gespeichert. Um die Sprache vollständig zu ändern, muss die App neu gestartet werden.")
+                    : I18n.T("Konfiguration gespeichert.");
+                var title = languageChanged ? I18n.T("Sprache geändert") : "Uptime Kuma Tray Agent";
+                MessageBox.Show(this, message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
 
             return true;
@@ -555,12 +565,12 @@ public partial class MainForm : Form
         {
             if (string.IsNullOrWhiteSpace(check.ServiceName))
             {
-                errors.Add($"Dienst '{check.DisplayName}': {I18n.T("Dienstname fehlt.")}");
+                errors.Add($"{I18n.T("Dienst")} '{check.DisplayName}': {I18n.T("Dienstname fehlt.")}");
             }
 
             if (!ValidationUtils.IsValidHttpUrl(check.PushUrl, allowEmpty: true))
             {
-                errors.Add($"Dienst '{check.DisplayName}': {I18n.T("Push-URL ist ungültig.")}");
+                errors.Add($"{I18n.T("Dienst")} '{check.DisplayName}': {I18n.T("Push-URL ist ungültig.")}");
             }
         }
 
@@ -568,12 +578,12 @@ public partial class MainForm : Form
         {
             if (string.IsNullOrWhiteSpace(check.Path))
             {
-                errors.Add($"Laufwerk '{check.Name}': {I18n.T("Pfad oder Laufwerksbuchstabe fehlt.")}");
+                errors.Add($"{I18n.T("Laufwerk")} '{check.Name}': {I18n.T("Pfad oder Laufwerksbuchstabe fehlt.")}");
             }
 
             if (!ValidationUtils.IsValidHttpUrl(check.PushUrl, allowEmpty: true))
             {
-                errors.Add($"Laufwerk '{check.Name}': {I18n.T("Push-URL ist ungültig.")}");
+                errors.Add($"{I18n.T("Laufwerk")} '{check.Name}': {I18n.T("Push-URL ist ungültig.")}");
             }
 
             if (check.ReconnectIfUnavailable
@@ -581,7 +591,7 @@ public partial class MainForm : Form
                 && string.IsNullOrWhiteSpace(check.ReconnectPath)
                 && !(check.Path.Length >= 2 && check.Path[1] == ':'))
             {
-                errors.Add($"Laufwerk '{check.Name}': {I18n.T("Für Reconnect wird ein Laufwerksbuchstabe oder UNC-Pfad benötigt.")}");
+                errors.Add($"{I18n.T("Laufwerk")} '{check.Name}': {I18n.T("Für Reconnect wird ein Laufwerksbuchstabe oder UNC-Pfad benötigt.")}");
             }
         }
 
@@ -623,7 +633,7 @@ public partial class MainForm : Form
         foreach (var status in _monitoring.GetStatuses())
         {
             var index = _statusGrid.Rows.Add(
-                status.Type,
+                I18n.CheckTypeName(status.Type),
                 status.Name,
                 status.Target,
                 BoolText(status.Enabled),
@@ -777,13 +787,8 @@ public partial class MainForm : Form
 
     private void StyleButton(Button button)
     {
-        var danger = button.Text.Contains("Löschen", StringComparison.OrdinalIgnoreCase)
-                     || button.Text.Contains("stoppen", StringComparison.OrdinalIgnoreCase)
-                     || button.Text.Contains("Deinstallieren", StringComparison.OrdinalIgnoreCase);
-        var secondary = button.Text.Contains("Logs", StringComparison.OrdinalIgnoreCase)
-                        || button.Text.Contains("Konfiguration", StringComparison.OrdinalIgnoreCase)
-                        || button.Text.Contains("Bearbeiten", StringComparison.OrdinalIgnoreCase)
-                        || button.Text.Contains("Aktualisieren", StringComparison.OrdinalIgnoreCase);
+        var danger = ContainsAnyButtonText(button.Text, "Löschen", "Dienst stoppen", "Monitoring stoppen", "Deinstallieren");
+        var secondary = ContainsAnyButtonText(button.Text, "Logs öffnen", "Konfiguration öffnen", "Bearbeiten", "Aktualisieren");
 
         button.FlatStyle = FlatStyle.Flat;
         button.FlatAppearance.BorderSize = secondary ? 1 : 0;
@@ -793,6 +798,11 @@ public partial class MainForm : Form
         button.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold, GraphicsUnit.Point);
         button.Padding = new Padding(10, 3, 10, 3);
         button.Height = Math.Max(button.Height, 34);
+    }
+
+    private static bool ContainsAnyButtonText(string text, params string[] keys)
+    {
+        return keys.Any(key => text.Contains(I18n.T(key), StringComparison.OrdinalIgnoreCase));
     }
 
     private void StyleGrid(DataGridView? grid)
@@ -913,7 +923,7 @@ public partial class MainForm : Form
                 BoolText(check.Enabled),
                 check.DisplayName,
                 check.ServiceName,
-                check.ExpectedStatus,
+                I18n.ServiceStatusName(check.ExpectedStatus),
                 check.IntervalSeconds,
                 BoolText(check.RestartIfStopped),
                 BoolText(check.SendMachineInfo),
@@ -977,7 +987,7 @@ public partial class MainForm : Form
     private static string FormatTcpConnectionLogging(TcpCheckConfig check)
     {
         return check.LogTcpConnections
-            ? TcpConnectionLogDirections.Normalize(check.TcpConnectionLogDirection)
+            ? I18n.TcpDirectionName(check.TcpConnectionLogDirection)
             : I18n.T("Aus");
     }
 
@@ -1343,7 +1353,7 @@ public partial class MainForm : Form
             _availableServicesGrid.Rows.Clear();
             foreach (var service in services)
             {
-                var index = _availableServicesGrid.Rows.Add(service.DisplayName, service.ServiceName, service.Status, BoolText(service.CanStop));
+                var index = _availableServicesGrid.Rows.Add(service.DisplayName, service.ServiceName, I18n.ServiceStatusName(service.Status), BoolText(service.CanStop));
                 _availableServicesGrid.Rows[index].Tag = service;
             }
 
@@ -1372,7 +1382,7 @@ public partial class MainForm : Form
         {
             var confirm = MessageBox.Show(
                 this,
-                $"Dienst {serviceName} hart neu starten?\r\n\r\nWenn der Dienst beim Stoppen hängen bleibt, wird der zugehörige Prozess erzwungen beendet.",
+                I18n.F("Dienst {0} hart neu starten?\r\n\r\nWenn der Dienst beim Stoppen hängen bleibt, wird der zugehörige Prozess erzwungen beendet.", serviceName),
                 I18n.T("Dienst hart neu starten"),
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning);
@@ -1395,7 +1405,7 @@ public partial class MainForm : Form
 
             MessageBox.Show(
                 this,
-                $"{serviceName}: {result.Message}\r\nStatus: {result.Status}\r\n{result.ErrorCategory}",
+                $"{serviceName}: {result.Message}\r\n{I18n.T("Status")}: {I18n.ServiceStatusName(result.Status)}\r\n{result.ErrorCategory}",
                 I18n.T("Dienstaktion"),
                 MessageBoxButtons.OK,
                 result.Success ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
@@ -1637,6 +1647,27 @@ public partial class MainForm : Form
         return combo;
     }
 
+    private static ComboBox AddOptionCombo(
+        TableLayoutPanel table,
+        string label,
+        IEnumerable<string> values,
+        Func<string, string> displaySelector,
+        int column,
+        int row)
+    {
+        EnsureRows(table, row + 1);
+        table.Controls.Add(new Label { Text = label, AutoSize = true, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, column, row);
+        var combo = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
+        combo.Items.AddRange(values.Select(value => new DisplayOption(value, displaySelector)).Cast<object>().ToArray());
+        if (combo.Items.Count > 0)
+        {
+            combo.SelectedIndex = 0;
+        }
+
+        table.Controls.Add(combo, column + 1, row);
+        return combo;
+    }
+
     private static ComboBox AddLanguageCombo(TableLayoutPanel table, string label, int column, int row)
     {
         EnsureRows(table, row + 1);
@@ -1651,6 +1682,42 @@ public partial class MainForm : Form
     private string GetSelectedLanguage()
     {
         return (_cmbLanguage.SelectedItem as LanguageOption)?.Value ?? AppLanguages.System;
+    }
+
+    private static string GetComboValue(ComboBox combo, string fallback)
+    {
+        return combo.SelectedItem switch
+        {
+            DisplayOption option => option.Value,
+            LanguageOption option => option.Value,
+            string value when !string.IsNullOrWhiteSpace(value) => value,
+            _ => fallback
+        };
+    }
+
+    private static void SelectComboValue(ComboBox combo, string value)
+    {
+        foreach (var item in combo.Items)
+        {
+            var itemValue = item switch
+            {
+                DisplayOption option => option.Value,
+                LanguageOption option => option.Value,
+                string text => text,
+                _ => item?.ToString() ?? ""
+            };
+
+            if (string.Equals(itemValue, value, StringComparison.OrdinalIgnoreCase))
+            {
+                combo.SelectedItem = item;
+                return;
+            }
+        }
+
+        if (combo.Items.Count > 0)
+        {
+            combo.SelectedIndex = 0;
+        }
     }
 
     private void SelectLanguageOption(string language)
@@ -1768,6 +1835,24 @@ public partial class MainForm : Form
         public override string ToString()
         {
             return I18n.LanguageDisplayName(Value);
+        }
+    }
+
+    private sealed class DisplayOption
+    {
+        private readonly Func<string, string> _displaySelector;
+
+        public DisplayOption(string value, Func<string, string> displaySelector)
+        {
+            Value = value;
+            _displaySelector = displaySelector;
+        }
+
+        public string Value { get; }
+
+        public override string ToString()
+        {
+            return _displaySelector(Value);
         }
     }
 
@@ -1890,14 +1975,7 @@ public partial class MainForm : Form
 
     private static string StateText(AgentCheckState state)
     {
-        return state switch
-        {
-            AgentCheckState.Up => "OK",
-            AgentCheckState.Down => "Fehler",
-            AgentCheckState.Warning => "Warnung",
-            AgentCheckState.Disabled => "Deaktiviert",
-            _ => "Unbekannt"
-        };
+        return I18n.CheckStateName(state);
     }
 
     private Color StateColor(AgentCheckState state)

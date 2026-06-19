@@ -42,8 +42,8 @@ Beim ersten MSI-Build installiert das Skript das WiX Toolset automatisch lokal n
 Die fertige Datei liegt danach unter:
 
 ```text
-build\installer\UptimeKumaTrayAgent-Setup-1.0.6-x64.msi
-build\installer\UptimeKumaTrayAgent-Setup-1.0.6-x86.msi
+build\installer\UptimeKumaTrayAgent-Setup-1.0.7-x64.msi
+build\installer\UptimeKumaTrayAgent-Setup-1.0.7-x86.msi
 ```
 
 Der ältere selbstextrahierende EXE-Installer kann weiterhin gebaut werden:
@@ -55,7 +55,7 @@ BuildInstaller.cmd
 Die fertige Datei liegt danach unter:
 
 ```text
-build\installer\UptimeKumaTrayAgent-Setup-1.0.6.exe
+build\installer\UptimeKumaTrayAgent-Setup-1.0.7.exe
 ```
 
 Die Installer können für Neuinstallation und Updates verwendet werden. Bei Updates werden Dienst und Programmdateien aktualisiert, die Konfiguration und Logs unter `%ProgramData%\UptimeKumaTrayAgent` bleiben erhalten. Falls aus Version 1.0.3 noch eine Benutzer-Konfiguration unter `%AppData%\UptimeKumaTrayAgent` vorhanden ist und ProgramData leer ist oder nur eine Factory-Default-Konfiguration enthält, wird diese alte Konfiguration automatisch übernommen. Zusätzlich werden Startmenü-Einträge `UptimeKumaAgent` und `UptimeKumaAgent Konfiguration` angelegt, damit Windows-Suche Agent und Konfigurationsdatei findet.
@@ -73,7 +73,7 @@ Install.cmd
 Oder komfortabel über den Setup-Installer:
 
 ```text
-UptimeKumaTrayAgent-Setup-1.0.6-x64.msi
+UptimeKumaTrayAgent-Setup-1.0.7-x64.msi
 ```
 
 Wichtig: `Install.cmd` muss als Administrator gestartet werden. Der Setup-Installer fragt bei Bedarf automatisch nach Administratorrechten. Der Dienst wird als `LocalSystem` mit Starttyp `Automatisch` eingerichtet und erscheint in `services.msc` als:
@@ -96,7 +96,7 @@ Beim Schließen bleibt die Anwendung standardmäßig im Tray aktiv. Dieses Verha
 
 Die Darstellung kann in der GUI unter "Globale Einstellungen" zwischen `Light` und `Dark` umgeschaltet werden.
 
-Die Sprache steht standardmäßig auf `System` und folgt damit der Windows-Anzeigesprache. Unterstützt sind aktuell Deutsch, English und Polski; alternativ kann die Sprache in den globalen Einstellungen fest gewählt werden.
+Die Sprache steht standardmäßig auf `System` und folgt damit der Windows-Anzeigesprache. Unterstützt sind aktuell Deutsch, English und Polski; alternativ kann die Sprache in den globalen Einstellungen fest gewählt werden. Nach einer Sprachänderung muss die App neu gestartet werden, damit alle Tabellen, Dialoge und Beschriftungen vollständig in der neuen Sprache geladen werden.
 
 ## Fehleraktionen
 

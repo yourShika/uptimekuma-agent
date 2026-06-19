@@ -1,5 +1,5 @@
 {
-  "version": "1.0.6",
+  "version": "1.0.7",
   "global": {
     "defaultIntervalSeconds": 30,
     "httpTimeoutMs": 5000,

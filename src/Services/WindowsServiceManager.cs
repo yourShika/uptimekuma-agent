@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using UptimeKumaTrayAgent.Models;
+using UptimeKumaTrayAgent.Utils;
 
 namespace UptimeKumaTrayAgent.Services;
 
@@ -29,7 +30,7 @@ public sealed class WindowsServiceManager
         var scm = OpenScManager(ScManagerEnumerateService);
         if (scm == IntPtr.Zero)
         {
-            throw CreateWin32Exception("Lokale Dienste konnten nicht geladen werden");
+            throw CreateWin32Exception(I18n.T("Lokale Dienste konnten nicht geladen werden"));
         }
 
         try
@@ -50,7 +51,7 @@ public sealed class WindowsServiceManager
             var error = Marshal.GetLastWin32Error();
             if (bytesNeeded <= 0 && error != ErrorMoreData)
             {
-                throw CreateWin32Exception("Lokale Dienste konnten nicht aufgelistet werden");
+                throw CreateWin32Exception(I18n.T("Lokale Dienste konnten nicht aufgelistet werden"));
             }
 
             var buffer = Marshal.AllocHGlobal(bytesNeeded);
@@ -69,7 +70,7 @@ public sealed class WindowsServiceManager
                         ref resumeHandle,
                         null))
                 {
-                    throw CreateWin32Exception("Lokale Dienste konnten nicht aufgelistet werden");
+                    throw CreateWin32Exception(I18n.T("Lokale Dienste konnten nicht aufgelistet werden"));
                 }
 
                 var structSize = Marshal.SizeOf<EnumServiceStatusProcess>();
@@ -105,7 +106,7 @@ public sealed class WindowsServiceManager
     {
         if (string.IsNullOrWhiteSpace(serviceName))
         {
-            return Failure("Dienst existiert nicht", "Dienstname fehlt");
+            return Failure(I18n.T("Dienst existiert nicht"), I18n.T("Dienstname fehlt"));
         }
 
         var open = OpenServiceFor(serviceName, ServiceQueryStatus, out var serviceHandle, out var openResult);
@@ -121,12 +122,12 @@ public sealed class WindowsServiceManager
             {
                 Success = true,
                 Status = MapState(status.CurrentState),
-                Message = "Dienststatus gelesen"
+                Message = I18n.T("Dienststatus gelesen")
             };
         }
         catch (Exception ex)
         {
-            return Failure("Dienstprüfung fehlgeschlagen", ex.Message);
+            return Failure(I18n.T("Dienstprüfung fehlgeschlagen"), ex.Message);
         }
         finally
         {
@@ -171,7 +172,7 @@ public sealed class WindowsServiceManager
             var current = QueryStatus(serviceHandle);
             if (current.CurrentState == ServiceState.Running)
             {
-                return Success("Running", "Dienst läuft bereits");
+                return Success("Running", I18n.T("Dienst läuft bereits"));
             }
 
             if (!StartService(serviceHandle, 0, IntPtr.Zero))
@@ -188,8 +189,8 @@ public sealed class WindowsServiceManager
                 ServiceState.Running,
                 timeout,
                 cancellationToken,
-                "Dienst gestartet",
-                "Timeout beim Starten des Dienstes");
+                I18n.T("Dienst gestartet"),
+                I18n.T("Timeout beim Starten des Dienstes"));
         }
         catch (OperationCanceledException)
         {
@@ -197,7 +198,7 @@ public sealed class WindowsServiceManager
         }
         catch (Exception ex)
         {
-            return Failure("Dienst konnte nicht gestartet werden", ex.Message);
+            return Failure(I18n.T("Dienst konnte nicht gestartet werden"), ex.Message);
         }
         finally
         {
@@ -221,12 +222,12 @@ public sealed class WindowsServiceManager
             var current = QueryStatus(serviceHandle);
             if (current.CurrentState == ServiceState.Stopped)
             {
-                return Success("Stopped", "Dienst ist bereits gestoppt");
+                return Success("Stopped", I18n.T("Dienst ist bereits gestoppt"));
             }
 
             if ((current.ControlsAccepted & ServiceAcceptStop) != ServiceAcceptStop)
             {
-                return Failure("Dienst konnte nicht gestoppt werden", "Dienst akzeptiert kein Stop-Signal", MapState(current.CurrentState));
+                return Failure(I18n.T("Dienst konnte nicht gestoppt werden"), I18n.T("Dienst akzeptiert kein Stop-Signal"), MapState(current.CurrentState));
             }
 
             var nativeStatus = new ServiceStatus();
@@ -241,8 +242,8 @@ public sealed class WindowsServiceManager
                 ServiceState.Stopped,
                 timeout,
                 cancellationToken,
-                "Dienst gestoppt",
-                "Timeout beim Stoppen des Dienstes");
+                I18n.T("Dienst gestoppt"),
+                I18n.T("Timeout beim Stoppen des Dienstes"));
             if (stopped.Success || !forceKillOnTimeout)
             {
                 return stopped;
@@ -266,8 +267,8 @@ public sealed class WindowsServiceManager
                 ServiceState.Stopped,
                 TimeSpan.FromSeconds(10),
                 cancellationToken,
-                $"Dienstprozess {processId} wurde erzwungen beendet",
-                "Dienstprozess beendet, Status unklar");
+                I18n.F("Dienstprozess {0} wurde erzwungen beendet", processId),
+                I18n.T("Dienstprozess beendet, Status unklar"));
 
             return afterKill.Success
                 ? afterKill
@@ -279,7 +280,7 @@ public sealed class WindowsServiceManager
         }
         catch (Exception ex)
         {
-            return Failure("Dienst konnte nicht gestoppt werden", ex.Message);
+            return Failure(I18n.T("Dienst konnte nicht gestoppt werden"), ex.Message);
         }
         finally
         {
@@ -290,12 +291,12 @@ public sealed class WindowsServiceManager
     private bool OpenServiceFor(string serviceName, uint access, out IntPtr serviceHandle, out ServiceOperationResult result)
     {
         serviceHandle = IntPtr.Zero;
-        result = Failure("Dienstprüfung fehlgeschlagen", "");
+        result = Failure(I18n.T("Dienstprüfung fehlgeschlagen"), "");
 
         var scm = OpenScManager(ScManagerConnect);
         if (scm == IntPtr.Zero)
         {
-            result = Failure("keine Rechte zum Lesen des Dienstes", CreateWin32Exception("Service Control Manager konnte nicht geöffnet werden").Message);
+            result = Failure(I18n.T("keine Rechte zum Lesen des Dienstes"), CreateWin32Exception(I18n.T("Service Control Manager konnte nicht geöffnet werden")).Message);
             return false;
         }
 
@@ -310,11 +311,11 @@ public sealed class WindowsServiceManager
             var error = Marshal.GetLastWin32Error();
             result = error switch
             {
-                ErrorServiceDoesNotExist => Failure("Dienst existiert nicht", $"Dienst {serviceName} existiert nicht"),
+                ErrorServiceDoesNotExist => Failure(I18n.T("Dienst existiert nicht"), I18n.F("Dienst {0} existiert nicht", serviceName)),
                 ErrorAccessDenied => Failure((access & (ServiceStart | ServiceStop)) != 0
-                    ? "keine Rechte zum Starten des Dienstes"
-                    : "keine Rechte zum Lesen des Dienstes", new Win32Exception(error).Message),
-                _ => Failure("Dienstprüfung fehlgeschlagen", new Win32Exception(error).Message)
+                    ? I18n.T("keine Rechte zum Starten des Dienstes")
+                    : I18n.T("keine Rechte zum Lesen des Dienstes"), new Win32Exception(error).Message),
+                _ => Failure(I18n.T("Dienstprüfung fehlgeschlagen"), new Win32Exception(error).Message)
             };
             return false;
         }
@@ -347,7 +348,7 @@ public sealed class WindowsServiceManager
             Thread.Sleep(500);
         } while (DateTimeOffset.Now < deadline);
 
-        return Failure(timeoutCategory, $"Dienststatus ist {MapState(status.CurrentState)}", MapState(status.CurrentState));
+        return Failure(timeoutCategory, I18n.F("Dienststatus ist {0}", I18n.ServiceStatusName(MapState(status.CurrentState))), MapState(status.CurrentState));
     }
 
     private static ServiceOperationResult ForceKillServiceProcess(uint processId, string serviceName)
@@ -358,22 +359,22 @@ public sealed class WindowsServiceManager
             process.Kill(entireProcessTree: true);
             if (!process.WaitForExit(10000))
             {
-                return Failure("Dienstprozess konnte nicht beendet werden", $"Prozess {processId} für Dienst {serviceName} reagiert nicht", "StopPending");
+                return Failure(I18n.T("Dienstprozess konnte nicht beendet werden"), I18n.F("Prozess {0} für Dienst {1} reagiert nicht", processId, serviceName), "StopPending");
             }
 
-            return Success("Stopped", $"Dienstprozess {processId} für {serviceName} wurde erzwungen beendet");
+            return Success("Stopped", I18n.F("Dienstprozess {0} für {1} wurde erzwungen beendet", processId, serviceName));
         }
         catch (ArgumentException)
         {
-            return Success("Stopped", $"Dienstprozess {processId} für {serviceName} existiert nicht mehr");
+            return Success("Stopped", I18n.F("Dienstprozess {0} für {1} existiert nicht mehr", processId, serviceName));
         }
         catch (Win32Exception ex)
         {
-            return Failure("keine Rechte zum Beenden des Dienstprozesses", ex.Message, "StopPending");
+            return Failure(I18n.T("keine Rechte zum Beenden des Dienstprozesses"), ex.Message, "StopPending");
         }
         catch (Exception ex)
         {
-            return Failure("Dienstprozess konnte nicht beendet werden", ex.Message, "StopPending");
+            return Failure(I18n.T("Dienstprozess konnte nicht beendet werden"), ex.Message, "StopPending");
         }
     }
 
@@ -385,7 +386,7 @@ public sealed class WindowsServiceManager
         {
             if (!QueryServiceStatusEx(serviceHandle, ServiceStatusProcessInfo, buffer, size, out _))
             {
-                throw CreateWin32Exception("Dienststatus konnte nicht gelesen werden");
+                throw CreateWin32Exception(I18n.T("Dienststatus konnte nicht gelesen werden"));
             }
 
             return Marshal.PtrToStructure<ServiceStatusProcess>(buffer);
@@ -419,7 +420,7 @@ public sealed class WindowsServiceManager
 
     private static string MapStartError(int error)
     {
-        return error == ErrorAccessDenied ? "keine Rechte zum Starten des Dienstes" : "Dienst konnte nicht gestartet werden";
+        return error == ErrorAccessDenied ? I18n.T("keine Rechte zum Starten des Dienstes") : I18n.T("Dienst konnte nicht gestartet werden");
     }
 
     private static string MapState(ServiceState state)
