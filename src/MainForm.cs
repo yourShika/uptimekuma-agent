@@ -15,6 +15,8 @@ public partial class MainForm : Form
     private readonly MonitoringService _monitoring;
     private readonly AutostartService _autostart;
     private readonly WindowsServiceManager _windowsServiceManager;
+    private readonly GitHubUpdateService _updateService;
+    private readonly WindowsUpdateInstaller _updateInstaller;
     private readonly bool _startMinimized;
     private readonly System.Windows.Forms.Timer _uiTimer = new();
     private AgentConfig _config;
@@ -58,6 +60,8 @@ public partial class MainForm : Form
     private DataGridView _driveGrid = null!;
     private DataGridView _availableServicesGrid = null!;
     private TextBox _txtLogs = null!;
+    private Button _btnInstallUpdate = null!;
+    private UpdateCheckResult? _availableUpdate;
 
     public MainForm(
         AgentConfig config,
@@ -74,6 +78,8 @@ public partial class MainForm : Form
         _monitoring = monitoring;
         _autostart = autostart;
         _windowsServiceManager = windowsServiceManager;
+        _updateService = new GitHubUpdateService();
+        _updateInstaller = new WindowsUpdateInstaller(_updateService, _logger);
         _startMinimized = startMinimized;
         _config.Normalize();
         I18n.Apply(_config.Global.Language);
@@ -219,6 +225,10 @@ public partial class MainForm : Form
         buttonPanel.Controls.Add(CreateButton(I18n.T("Logs öffnen"), (_, _) => OpenLogsFolder()));
         buttonPanel.Controls.Add(CreateButton(I18n.T("Testlauf ausführen"), async (_, _) => await TestAllChecksAsync()));
         buttonPanel.Controls.Add(CreateButton(I18n.T("Konfiguration öffnen"), (_, _) => OpenConfigFile()));
+        buttonPanel.Controls.Add(CreateButton("Check for Updates", async (_, _) => await CheckForUpdatesAsync()));
+        _btnInstallUpdate = CreateButton("Update", async (_, _) => await InstallUpdateAsync());
+        _btnInstallUpdate.Enabled = false;
+        buttonPanel.Controls.Add(_btnInstallUpdate);
         top.Controls.Add(buttonPanel, 1, 0);
 
         var settingsArea = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2 };
@@ -1057,6 +1067,109 @@ public partial class MainForm : Form
         {
             statusLabel.Text = I18n.T("Bereit");
         }
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        _availableUpdate = null;
+        _btnInstallUpdate.Enabled = false;
+        statusLabel.Text = "Suche nach Updates...";
+
+        try
+        {
+            _config.Normalize();
+            var result = await _updateService
+                .CheckForUpdatesAsync(_config.Updates, AppVersion.Current, CancellationToken.None)
+                .ConfigureAwait(true);
+
+            if (!result.Success)
+            {
+                MessageBox.Show(this, result.Message, "Check for Updates", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            if (!result.UpdateAvailable)
+            {
+                MessageBox.Show(this, result.Message, "Check for Updates", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            _availableUpdate = result;
+            _btnInstallUpdate.Enabled = result.Asset is not null;
+
+            var assetText = result.Asset is null
+                ? "Kein passendes Installationspaket gefunden."
+                : "Paket: " + result.Asset.Name;
+            MessageBox.Show(
+                this,
+                $"{result.Message}\r\n\r\n{assetText}\r\nRelease: {result.Release?.HtmlUrl}",
+                "Update",
+                MessageBoxButtons.OK,
+                result.Asset is null ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Updateprüfung fehlgeschlagen", ex);
+            MessageBox.Show(this, ex.Message, "Check for Updates", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            statusLabel.Text = I18n.T("Bereit");
+        }
+    }
+
+    private async Task InstallUpdateAsync()
+    {
+        if (_availableUpdate?.Asset is null)
+        {
+            await CheckForUpdatesAsync();
+            if (_availableUpdate?.Asset is null)
+            {
+                return;
+            }
+        }
+
+        var update = _availableUpdate;
+        var confirm = MessageBox.Show(
+            this,
+            $"Version {update.Release?.Version} installieren?\r\n\r\nDer MSI-Installer wird heruntergeladen und mit Administratorrechten gestartet.",
+            "Update",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+
+        if (confirm != DialogResult.Yes)
+        {
+            return;
+        }
+
+        _btnInstallUpdate.Enabled = false;
+        statusLabel.Text = "Update wird heruntergeladen...";
+        var progress = new Progress<DownloadProgress>(download =>
+        {
+            statusLabel.Text = download.Percent.HasValue
+                ? $"Update wird heruntergeladen... {download.Percent:0.0}%"
+                : $"Update wird heruntergeladen... {download.BytesReceived / 1024 / 1024} MB";
+        });
+
+        var result = await _updateInstaller
+            .DownloadAndStartInstallerAsync(update, progress, CancellationToken.None)
+            .ConfigureAwait(true);
+
+        if (!result.Success)
+        {
+            _btnInstallUpdate.Enabled = true;
+            statusLabel.Text = I18n.T("Bereit");
+            MessageBox.Show(this, result.Message, "Update", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
+
+        MessageBox.Show(
+            this,
+            "Der MSI-Installer wurde gestartet. Die App wird jetzt beendet, damit die Dateien aktualisiert werden können.",
+            "Update",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information);
+        ExitApplication();
     }
 
     private bool? AskSendPushForTest()

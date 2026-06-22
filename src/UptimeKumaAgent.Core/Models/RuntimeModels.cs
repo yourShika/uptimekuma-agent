@@ -85,3 +85,53 @@ public sealed class ServiceOperationResult
     public string ErrorCategory { get; init; } = "";
     public string Message { get; init; } = "";
 }
+
+public enum AgentUpdatePlatform
+{
+    Unsupported,
+    WindowsX64,
+    WindowsX86,
+    LinuxX64,
+    LinuxArm64
+}
+
+public sealed class GitHubReleaseAsset
+{
+    public string Name { get; init; } = "";
+    public string BrowserDownloadUrl { get; init; } = "";
+    public long Size { get; init; }
+}
+
+public sealed class GitHubReleaseInfo
+{
+    public string TagName { get; init; } = "";
+    public string Version { get; init; } = "";
+    public string Name { get; init; } = "";
+    public string Body { get; init; } = "";
+    public string HtmlUrl { get; init; } = "";
+    public bool Prerelease { get; init; }
+    public DateTimeOffset? PublishedAt { get; init; }
+    public IReadOnlyList<GitHubReleaseAsset> Assets { get; init; } = Array.Empty<GitHubReleaseAsset>();
+}
+
+public sealed class UpdateCheckResult
+{
+    public bool Success { get; init; }
+    public bool UpdateAvailable { get; init; }
+    public string CurrentVersion { get; init; } = AppVersion.Current;
+    public AgentUpdatePlatform Platform { get; init; } = AgentUpdatePlatform.Unsupported;
+    public GitHubReleaseInfo? Release { get; init; }
+    public GitHubReleaseAsset? Asset { get; init; }
+    public string Message { get; init; } = "";
+    public string ErrorCategory { get; init; } = "";
+}
+
+public sealed class DownloadProgress
+{
+    public long BytesReceived { get; init; }
+    public long? TotalBytes { get; init; }
+
+    public double? Percent => TotalBytes is > 0
+        ? Math.Round(BytesReceived * 100d / TotalBytes.Value, 1)
+        : null;
+}

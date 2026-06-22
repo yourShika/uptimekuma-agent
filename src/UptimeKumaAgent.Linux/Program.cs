@@ -41,6 +41,16 @@ internal static class Program
                 return 0;
             }
 
+            if (options.CheckUpdates)
+            {
+                return await CheckForUpdatesAsync(configService, install: false, paths, CancellationToken.None).ConfigureAwait(false);
+            }
+
+            if (options.Update)
+            {
+                return await CheckForUpdatesAsync(configService, install: true, paths, CancellationToken.None).ConfigureAwait(false);
+            }
+
             var logger = new Logger(paths);
             var config = configService.LoadOrThrow(createIfMissing: true);
             logger.SetLevel(config.Global.LogLevel);
@@ -154,6 +164,80 @@ internal static class Program
             new LinuxPingService(logger));
     }
 
+    private static async Task<int> CheckForUpdatesAsync(
+        ConfigService configService,
+        bool install,
+        LinuxAppPaths paths,
+        CancellationToken cancellationToken)
+    {
+        var config = LoadConfigForRead(configService);
+        var updateService = new GitHubUpdateService();
+        var result = await updateService
+            .CheckForUpdatesAsync(config.Updates, AppVersion.Current, cancellationToken)
+            .ConfigureAwait(false);
+
+        PrintUpdateResult(result);
+        if (!result.Success)
+        {
+            return 1;
+        }
+
+        if (!install || !result.UpdateAvailable)
+        {
+            return 0;
+        }
+
+        if (result.Asset is null)
+        {
+            return 1;
+        }
+
+        var logger = new Logger(paths);
+        logger.SetLevel(config.Global.LogLevel);
+        var installer = new LinuxUpdateInstaller(updateService, logger);
+        var installResult = await installer.DownloadAndInstallAsync(result, cancellationToken).ConfigureAwait(false);
+        Console.WriteLine(installResult.Message);
+        if (!installResult.Success && !string.IsNullOrWhiteSpace(installResult.ErrorCategory))
+        {
+            Console.Error.WriteLine(installResult.ErrorCategory);
+        }
+
+        return installResult.Success ? 0 : 1;
+    }
+
+    private static AgentConfig LoadConfigForRead(ConfigService configService)
+    {
+        if (File.Exists(configService.ConfigPath))
+        {
+            return configService.LoadOrThrow(createIfMissing: false);
+        }
+
+        var config = AgentConfig.CreateDefault();
+        config.Normalize();
+        return config;
+    }
+
+    private static void PrintUpdateResult(UpdateCheckResult result)
+    {
+        Console.WriteLine(result.Message);
+        Console.WriteLine("Installiert: " + result.CurrentVersion);
+        if (result.Release is null)
+        {
+            return;
+        }
+
+        Console.WriteLine("GitHub Release: " + result.Release.Version + " (" + result.Release.TagName + ")");
+        if (!string.IsNullOrWhiteSpace(result.Release.HtmlUrl))
+        {
+            Console.WriteLine("URL: " + result.Release.HtmlUrl);
+        }
+
+        if (result.Asset is not null)
+        {
+            Console.WriteLine("Paket: " + result.Asset.Name);
+        }
+    }
+
     private static IDisposable? RegisterSignal(PosixSignal signal, CancellationTokenSource stop)
     {
         try
@@ -206,6 +290,8 @@ internal static class Program
           --config <path>    Konfigurationsdatei verwenden
           --test-config      Konfiguration laden und validieren
           --once             Alle aktivierten Checks einmal ausführen
+          --check-updates    GitHub Releases auf neuere Version prüfen
+          --update           Neuere Version aus GitHub Releases installieren
           --service          Headless-Dienstmodus für systemd
 
         Standardpfade:
@@ -224,6 +310,8 @@ internal sealed class CliOptions
     public string? ConfigPath { get; private init; }
     public bool TestConfig { get; private init; }
     public bool Once { get; private init; }
+    public bool CheckUpdates { get; private init; }
+    public bool Update { get; private init; }
     public bool Service { get; private init; }
 
     public static CliOptions Parse(string[] args, out string error)
@@ -258,6 +346,12 @@ internal sealed class CliOptions
                 case "--once":
                     mutable.Once = true;
                     break;
+                case "--check-updates":
+                    mutable.CheckUpdates = true;
+                    break;
+                case "--update":
+                    mutable.Update = true;
+                    break;
                 case "--service":
                     mutable.Service = true;
                     break;
@@ -267,10 +361,10 @@ internal sealed class CliOptions
             }
         }
 
-        var modes = new[] { mutable.TestConfig, mutable.Once, mutable.Service }.Count(value => value);
+        var modes = new[] { mutable.TestConfig, mutable.Once, mutable.CheckUpdates, mutable.Update, mutable.Service }.Count(value => value);
         if (modes > 1)
         {
-            error = "--test-config, --once und --service dürfen nicht kombiniert werden.";
+            error = "--test-config, --once, --check-updates, --update und --service dürfen nicht kombiniert werden.";
             return options;
         }
 
@@ -281,6 +375,8 @@ internal sealed class CliOptions
             ConfigPath = mutable.ConfigPath,
             TestConfig = mutable.TestConfig,
             Once = mutable.Once,
+            CheckUpdates = mutable.CheckUpdates,
+            Update = mutable.Update,
             Service = mutable.Service
         };
     }
@@ -292,6 +388,8 @@ internal sealed class CliOptions
         public string? ConfigPath { get; set; }
         public bool TestConfig { get; set; }
         public bool Once { get; set; }
+        public bool CheckUpdates { get; set; }
+        public bool Update { get; set; }
         public bool Service { get; set; }
     }
 }

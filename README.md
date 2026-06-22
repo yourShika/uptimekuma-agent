@@ -63,6 +63,19 @@ Die Installer können für Neuinstallation und Updates verwendet werden. Bei Upd
 
 Für normale Server ist `x64` empfohlen. `x86` ist das 32-bit-Paket für ältere oder entsprechend eingeschränkte Systeme. Für Releases kann zusätzlich eine Kopie mit `x32` im Dateinamen bereitgestellt werden; inhaltlich entspricht sie dem x86-Paket.
 
+## Updates über GitHub Releases
+
+Ab Version 1.0.8 kann der Agent GitHub Releases von `yourShika/uptimekuma-agent` prüfen. In der Windows-GUI gibt es dafür `Check for Updates` und `Update`. `Check for Updates` sucht eine neuere Release-Version und ein passendes MSI für die aktuelle Architektur. `Update` lädt das MSI in einen temporären Ordner und startet den Installer mit Administratorabfrage. Push-URLs und Secrets werden dabei nicht geloggt.
+
+Unter Linux stehen die Headless-Befehle zur Verfügung:
+
+```bash
+/opt/uptime-kuma-agent/uptime-kuma-agent --check-updates
+sudo /opt/uptime-kuma-agent/uptime-kuma-agent --update
+```
+
+`--update` lädt das passende `.tar.gz` aus dem GitHub Release, ersetzt die Binary unter `/opt/uptime-kuma-agent` und startet `uptime-kuma-agent.service` über `systemctl restart` ohne Shell-String-Konkatenation neu. Für die Installation nach `/opt` und den Dienstneustart sind in der Regel Root- oder sudo-Rechte nötig. Falls kein GitHub Release oder kein passendes Paket vorhanden ist, bleibt die installierte Version unverändert.
+
 ## Linux Headless Build
 
 Linux wird als headless/systemd-Agent gebaut, ohne WPF, WinForms, X11, Wayland, GNOME oder KDE.
@@ -122,6 +135,8 @@ Manuelle Ausführung:
 /opt/uptime-kuma-agent/uptime-kuma-agent --version
 /opt/uptime-kuma-agent/uptime-kuma-agent --config /etc/uptime-kuma-agent/config.json --test-config
 /opt/uptime-kuma-agent/uptime-kuma-agent --config /etc/uptime-kuma-agent/config.json --once
+/opt/uptime-kuma-agent/uptime-kuma-agent --check-updates
+sudo /opt/uptime-kuma-agent/uptime-kuma-agent --update
 /opt/uptime-kuma-agent/uptime-kuma-agent --config /etc/uptime-kuma-agent/config.json --service
 ```
 

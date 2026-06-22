@@ -8,6 +8,7 @@ public sealed class AgentConfig
     [JsonPropertyName("global")]
     public GlobalSettings Global { get; set; } = new();
 
+    public UpdateSettings Updates { get; set; } = new();
     public WatchdogSettings Watchdog { get; set; } = new();
     public List<PingCheckConfig> PingChecks { get; set; } = new();
     public List<TcpCheckConfig> TcpChecks { get; set; } = new();
@@ -66,6 +67,7 @@ public sealed class AgentConfig
     {
         Version = AppVersion.Current;
         Global ??= new GlobalSettings();
+        Updates ??= new UpdateSettings();
         Watchdog ??= new WatchdogSettings();
         PingChecks ??= new List<PingCheckConfig>();
         TcpChecks ??= new List<TcpCheckConfig>();
@@ -73,6 +75,7 @@ public sealed class AgentConfig
         DriveChecks ??= new List<DriveCheckConfig>();
 
         Global.Normalize();
+        Updates.Normalize();
         Watchdog.Normalize(Global.DefaultIntervalSeconds);
 
         foreach (var check in PingChecks)
@@ -94,6 +97,55 @@ public sealed class AgentConfig
         {
             check.Normalize(Global.DefaultIntervalSeconds);
         }
+    }
+}
+
+public sealed class UpdateSettings
+{
+    public const string DefaultRepository = "yourShika/uptimekuma-agent";
+
+    public string Repository { get; set; } = DefaultRepository;
+    public bool IncludePrereleases { get; set; }
+
+    public void Normalize()
+    {
+        Repository = NormalizeRepository(Repository);
+    }
+
+    public static string NormalizeRepository(string? repository)
+    {
+        if (string.IsNullOrWhiteSpace(repository))
+        {
+            return DefaultRepository;
+        }
+
+        var value = repository.Trim().TrimEnd('/');
+        const string githubPrefix = "https://github.com/";
+        if (value.StartsWith(githubPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            value = value[githubPrefix.Length..].Trim('/');
+        }
+
+        if (value.EndsWith(".git", StringComparison.OrdinalIgnoreCase))
+        {
+            value = value[..^4];
+        }
+
+        var parts = value.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length != 2 || !IsSafeGitHubName(parts[0]) || !IsSafeGitHubName(parts[1]))
+        {
+            return DefaultRepository;
+        }
+
+        return parts[0] + "/" + parts[1];
+    }
+
+    private static bool IsSafeGitHubName(string value)
+    {
+        return value.Length > 0
+            && !value.Contains("..", StringComparison.Ordinal)
+            && value.All(character =>
+            char.IsLetterOrDigit(character) || character is '-' or '_' or '.');
     }
 }
 

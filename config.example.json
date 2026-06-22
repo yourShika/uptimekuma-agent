@@ -15,6 +15,10 @@
     "autostart": false,
     "monitoringAutoStart": true
   },
+  "updates": {
+    "repository": "yourShika/uptimekuma-agent",
+    "includePrereleases": false
+  },
   "watchdog": {
     "enabled": false,
     "pushUrl": "",
