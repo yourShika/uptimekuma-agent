@@ -1,0 +1,62 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    name: Windows app
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore Windows project
+        run: dotnet restore src/UptimeKumaTrayAgent.csproj
+
+      - name: Build Windows project
+        run: dotnet build src/UptimeKumaTrayAgent.csproj -c Release --no-restore
+
+  linux:
+    name: Core and Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: |
+          dotnet restore src/UptimeKumaAgent.Core/UptimeKumaAgent.Core.csproj
+          dotnet restore src/UptimeKumaAgent.Linux/UptimeKumaAgent.Linux.csproj
+          dotnet restore tests/UptimeKumaAgent.Core.Tests/UptimeKumaAgent.Core.Tests.csproj
+
+      - name: Build Core
+        run: dotnet build src/UptimeKumaAgent.Core/UptimeKumaAgent.Core.csproj -c Release --no-restore
+
+      - name: Build Linux headless
+        run: dotnet build src/UptimeKumaAgent.Linux/UptimeKumaAgent.Linux.csproj -c Release --no-restore
+
+      - name: Test Core
+        run: dotnet test tests/UptimeKumaAgent.Core.Tests/UptimeKumaAgent.Core.Tests.csproj -c Release --no-restore
+
+      - name: Smoke Linux CLI
+        run: |
+          dotnet run --project src/UptimeKumaAgent.Linux/UptimeKumaAgent.Linux.csproj -- --help
+          dotnet run --project src/UptimeKumaAgent.Linux/UptimeKumaAgent.Linux.csproj -- --version
+          dotnet run --project src/UptimeKumaAgent.Linux/UptimeKumaAgent.Linux.csproj -- --config config.linux.example.json --test-config
+          dotnet run --project src/UptimeKumaAgent.Linux/UptimeKumaAgent.Linux.csproj -- --config config.linux.example.json --once
+          timeout 5s dotnet run --project src/UptimeKumaAgent.Linux/UptimeKumaAgent.Linux.csproj -- --config config.linux.example.json --service || test $? -eq 124

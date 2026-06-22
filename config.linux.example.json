@@ -1,0 +1,142 @@
+{
+  "version": "1.0.8",
+  "global": {
+    "defaultIntervalSeconds": 30,
+    "httpTimeoutMs": 5000,
+    "tcpTimeoutMs": 3000,
+    "pingTimeoutMs": 3000,
+    "sendMachineInfo": true,
+    "maskPushUrls": true,
+    "logLevel": "Info",
+    "theme": "Light",
+    "language": "System",
+    "startMinimized": true,
+    "minimizeToTrayOnClose": true,
+    "autostart": false,
+    "monitoringAutoStart": true
+  },
+  "watchdog": {
+    "enabled": false,
+    "pushUrl": "",
+    "intervalSeconds": 60,
+    "maxSecondsWithoutSuccessfulCheck": 300,
+    "sendMachineInfo": true
+  },
+  "pingChecks": [
+    {
+      "enabled": true,
+      "name": "Gateway",
+      "host": "192.168.1.1",
+      "pushUrl": "",
+      "intervalSeconds": 30,
+      "timeoutMs": 3000,
+      "sendMachineInfo": true,
+      "restartServicesOnFailure": [],
+      "restartServicesCooldownSeconds": 300,
+      "restartServicesDelayAfterBootMinutes": 0,
+      "restartServicesDelayAfterFailureMinutes": 0,
+      "forceKillRestartServicesOnTimeout": false,
+      "note": ""
+    }
+  ],
+  "tcpChecks": [
+    {
+      "enabled": false,
+      "name": "HTTPS lokal",
+      "host": "127.0.0.1",
+      "port": 443,
+      "pushUrl": "",
+      "intervalSeconds": 30,
+      "timeoutMs": 3000,
+      "sendMachineInfo": true,
+      "restartServicesOnFailure": [
+        "nginx"
+      ],
+      "restartServicesCooldownSeconds": 300,
+      "restartServicesDelayAfterBootMinutes": 5,
+      "restartServicesDelayAfterFailureMinutes": 2,
+      "forceKillRestartServicesOnTimeout": false,
+      "logTcpConnections": true,
+      "tcpConnectionLogDirection": "Ein- und ausgehend",
+      "note": "systemd-Serviceaktionen benoetigen root/sudo-Rechte"
+    }
+  ],
+  "serviceChecks": [
+    {
+      "enabled": false,
+      "displayName": "nginx",
+      "serviceName": "nginx",
+      "expectedStatus": "Running",
+      "pushUrl": "",
+      "intervalSeconds": 30,
+      "restartIfStopped": true,
+      "sendMachineInfo": true,
+      "restartServicesOnFailure": [],
+      "restartServicesCooldownSeconds": 300,
+      "restartServicesDelayAfterBootMinutes": 0,
+      "restartServicesDelayAfterFailureMinutes": 0,
+      "forceKillRestartServicesOnTimeout": false,
+      "restartIfStoppedDelayAfterBootMinutes": 5,
+      "restartIfStoppedDelayAfterFailureMinutes": 2,
+      "note": "Unterstuetzt Namen wie nginx, nginx.service, docker, docker.service, ssh und sshd"
+    }
+  ],
+  "driveChecks": [
+    {
+      "enabled": true,
+      "name": "Root",
+      "path": "/",
+      "pushUrl": "",
+      "intervalSeconds": 60,
+      "minimumFreePercent": 10,
+      "minimumFreeGb": 5.0,
+      "reconnectIfUnavailable": false,
+      "reconnectPath": "",
+      "logDetails": true,
+      "sendMachineInfo": true,
+      "note": ""
+    },
+    {
+      "enabled": false,
+      "name": "Home",
+      "path": "/home",
+      "pushUrl": "",
+      "intervalSeconds": 60,
+      "minimumFreePercent": 10,
+      "minimumFreeGb": 0,
+      "reconnectIfUnavailable": false,
+      "reconnectPath": "",
+      "logDetails": true,
+      "sendMachineInfo": true,
+      "note": ""
+    },
+    {
+      "enabled": false,
+      "name": "Share",
+      "path": "/mnt/share",
+      "pushUrl": "",
+      "intervalSeconds": 60,
+      "minimumFreePercent": 0,
+      "minimumFreeGb": 0,
+      "reconnectIfUnavailable": false,
+      "reconnectPath": "",
+      "logDetails": true,
+      "sendMachineInfo": true,
+      "note": "Reconnect nur aktivieren, wenn der Mountpoint in /etc/fstab steht"
+    },
+    {
+      "enabled": false,
+      "name": "Storage",
+      "path": "/media/storage",
+      "pushUrl": "",
+      "intervalSeconds": 60,
+      "minimumFreePercent": 0,
+      "minimumFreeGb": 0,
+      "reconnectIfUnavailable": false,
+      "reconnectPath": "",
+      "logDetails": true,
+      "sendMachineInfo": true,
+      "note": ""
+    }
+  ]
+}

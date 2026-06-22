@@ -1,0 +1,114 @@
+{
+  "version": "1.0.8",
+  "global": {
+    "defaultIntervalSeconds": 30,
+    "httpTimeoutMs": 5000,
+    "tcpTimeoutMs": 3000,
+    "pingTimeoutMs": 3000,
+    "sendMachineInfo": true,
+    "maskPushUrls": true,
+    "logLevel": "Info",
+    "theme": "Light",
+    "language": "System",
+    "startMinimized": true,
+    "minimizeToTrayOnClose": true,
+    "autostart": false,
+    "monitoringAutoStart": true
+  },
+  "watchdog": {
+    "enabled": false,
+    "pushUrl": "",
+    "intervalSeconds": 60,
+    "maxSecondsWithoutSuccessfulCheck": 300,
+    "sendMachineInfo": true
+  },
+  "pingChecks": [
+    {
+      "enabled": true,
+      "name": "Router",
+      "host": "192.168.1.1",
+      "pushUrl": "",
+      "intervalSeconds": 30,
+      "timeoutMs": 3000,
+      "sendMachineInfo": true,
+      "restartServicesOnFailure": [],
+      "restartServicesCooldownSeconds": 300,
+      "restartServicesDelayAfterBootMinutes": 0,
+      "restartServicesDelayAfterFailureMinutes": 0,
+      "forceKillRestartServicesOnTimeout": false,
+      "note": ""
+    }
+  ],
+  "tcpChecks": [
+    {
+      "enabled": true,
+      "name": "HTTPS Server",
+      "host": "server01",
+      "port": 443,
+      "pushUrl": "",
+      "intervalSeconds": 30,
+      "timeoutMs": 3000,
+      "sendMachineInfo": true,
+      "restartServicesOnFailure": [
+        "Spooler"
+      ],
+      "restartServicesCooldownSeconds": 300,
+      "restartServicesDelayAfterBootMinutes": 0,
+      "restartServicesDelayAfterFailureMinutes": 0,
+      "forceKillRestartServicesOnTimeout": true,
+      "logTcpConnections": true,
+      "tcpConnectionLogDirection": "Ein- und ausgehend",
+      "note": ""
+    }
+  ],
+  "serviceChecks": [
+    {
+      "enabled": true,
+      "displayName": "Print Spooler",
+      "serviceName": "Spooler",
+      "expectedStatus": "Running",
+      "pushUrl": "",
+      "intervalSeconds": 30,
+      "restartIfStopped": false,
+      "sendMachineInfo": true,
+      "restartServicesOnFailure": [],
+      "restartServicesCooldownSeconds": 300,
+      "restartServicesDelayAfterBootMinutes": 0,
+      "restartServicesDelayAfterFailureMinutes": 0,
+      "forceKillRestartServicesOnTimeout": false,
+      "restartIfStoppedDelayAfterBootMinutes": 5,
+      "restartIfStoppedDelayAfterFailureMinutes": 2,
+      "note": ""
+    }
+  ],
+  "driveChecks": [
+    {
+      "enabled": true,
+      "name": "Systemlaufwerk",
+      "path": "C:\\",
+      "pushUrl": "",
+      "intervalSeconds": 60,
+      "minimumFreePercent": 10,
+      "minimumFreeGb": 5.0,
+      "reconnectIfUnavailable": false,
+      "reconnectPath": "",
+      "logDetails": true,
+      "sendMachineInfo": true,
+      "note": ""
+    },
+    {
+      "enabled": false,
+      "name": "Netzlaufwerk Daten",
+      "path": "Z:\\",
+      "pushUrl": "",
+      "intervalSeconds": 60,
+      "minimumFreePercent": 0,
+      "minimumFreeGb": 0,
+      "reconnectIfUnavailable": true,
+      "reconnectPath": "\\\\server\\share",
+      "logDetails": true,
+      "sendMachineInfo": true,
+      "note": "Verwendet gespeicherte Windows-Anmeldedaten"
+    }
+  ]
+}

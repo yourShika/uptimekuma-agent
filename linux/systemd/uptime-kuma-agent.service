@@ -1,0 +1,16 @@
+[Unit]
+Description=Uptime Kuma Agent
+Documentation=https://github.com/yourShika/uptimekuma-agent
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/uptime-kuma-agent
+ExecStart=/opt/uptime-kuma-agent/uptime-kuma-agent --service --config /etc/uptime-kuma-agent/config.json
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
