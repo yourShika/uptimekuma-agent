@@ -282,7 +282,7 @@ internal static class Program
     private static void PrintHelp()
     {
         Console.WriteLine("""
-        uptime-kuma-agent 1.0.8
+        uptime-kuma-agent 1.0.9
 
         Optionen:
           --help             Hilfe anzeigen

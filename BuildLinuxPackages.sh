@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VERSION="1.0.8"
+VERSION="1.0.9"
 
 "${ROOT_DIR}/PublishLinux.sh"
 

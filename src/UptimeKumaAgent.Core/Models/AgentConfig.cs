@@ -238,5 +238,5 @@ public sealed class WatchdogSettings
 
 public static class AppVersion
 {
-    public const string Current = "1.0.8";
+    public const string Current = "1.0.9";
 }

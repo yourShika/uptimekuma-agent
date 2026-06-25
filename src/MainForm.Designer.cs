@@ -13,7 +13,7 @@ partial class MainForm
     private Label headerTitle = null!;
     private Label headerSubtitle = null!;
     private Label headerBadge = null!;
-    private TabControl tabMain = null!;
+    private HiddenTabControl tabMain = null!;
     private TabPage tabGeneral = null!;
     private TabPage tabPing = null!;
     private TabPage tabTcp = null!;
@@ -32,7 +32,7 @@ partial class MainForm
         headerTitle = new Label();
         headerSubtitle = new Label();
         headerBadge = new Label();
-        tabMain = new TabControl();
+        tabMain = new HiddenTabControl();
         tabGeneral = new TabPage();
         tabPing = new TabPage();
         tabTcp = new TabPage();

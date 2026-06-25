@@ -7,10 +7,10 @@ namespace UptimeKumaAgent.Core.Tests;
 public sealed class GitHubUpdateServiceTests
 {
     [Theory]
-    [InlineData("v1.0.9", "1.0.8", true)]
-    [InlineData("1.0.8", "1.0.8", false)]
-    [InlineData("1.0.8-beta.1", "1.0.7", true)]
-    [InlineData("not-a-version", "1.0.8", false)]
+    [InlineData("v1.0.10", "1.0.9", true)]
+    [InlineData("1.0.9", "1.0.9", false)]
+    [InlineData("1.0.9-beta.1", "1.0.8", true)]
+    [InlineData("not-a-version", "1.0.9", false)]
     public void IsNewerVersion_ComparesReleaseTags(string candidate, string current, bool expected)
     {
         Assert.Equal(expected, GitHubUpdateService.IsNewerVersion(candidate, current));

@@ -19,6 +19,7 @@ public partial class MainForm : Form
     private readonly WindowsUpdateInstaller _updateInstaller;
     private readonly bool _startMinimized;
     private readonly System.Windows.Forms.Timer _uiTimer = new();
+    private readonly List<(TabPage Page, Button Button, Label? Count)> _navItems = new();
     private AgentConfig _config;
     private ThemePalette _theme = ThemePalette.Light;
     private Icon _appIcon = null!;
@@ -29,12 +30,26 @@ public partial class MainForm : Form
     private ToolStripMenuItem _trayAutostart = null!;
     private bool _reallyExit;
 
+    private TableLayoutPanel _shellLayout = null!;
+    private Panel _sidebarPanel = null!;
+    private FlowLayoutPanel _sidebarNav = null!;
+    private TabPage _tabSettings = null!;
+    private Label _sidebarVersion = null!;
+    private Label _sectionTitle = null!;
+    private Label _sectionSubtitle = null!;
+    private Button _btnThemeToggle = null!;
     private Label _lblAgentStatus = null!;
     private Label _lblMonitoring = null!;
     private Label _lblLastRun = null!;
     private Label _lblLastError = null!;
     private Label _lblVersion = null!;
     private Label _lblComputer = null!;
+    private Label _lblKpiTotal = null!;
+    private Label _lblKpiOk = null!;
+    private Label _lblKpiDown = null!;
+    private Label _lblKpiAvg = null!;
+    private TextBox _txtMonitorSearch = null!;
+    private ComboBox _cmbStatusFilter = null!;
     private NumericUpDown _numDefaultInterval = null!;
     private NumericUpDown _numHttpTimeout = null!;
     private NumericUpDown _numTcpTimeout = null!;
@@ -87,6 +102,7 @@ public partial class MainForm : Form
 
         InitializeComponent();
         ConfigureBranding();
+        BuildShellLayout();
         BuildTrayIcon();
         BuildGeneralTab();
         BuildPingTab();
@@ -94,6 +110,8 @@ public partial class MainForm : Form
         BuildServicesTab();
         BuildDrivesTab();
         BuildLogsTab();
+        BuildSettingsTab();
+        BuildNavigation();
 
         LoadConfigIntoControls();
         RefreshAllCheckGrids();
@@ -181,6 +199,290 @@ public partial class MainForm : Form
         headerIcon.Image = AppIconFactory.CreateBitmap(64);
     }
 
+    private void BuildShellLayout()
+    {
+        Controls.Remove(mainLayout);
+
+        _shellLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 1,
+            Margin = new Padding(0),
+            Padding = new Padding(0)
+        };
+        _shellLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 248));
+        _shellLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        _shellLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        _sidebarPanel = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(18, 20, 18, 18)
+        };
+
+        var sidebarLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3
+        };
+        sidebarLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 110));
+        sidebarLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        sidebarLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
+        _sidebarPanel.Controls.Add(sidebarLayout);
+
+        var brand = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 2 };
+        brand.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 52));
+        brand.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        brand.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
+        brand.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
+        var brandIcon = new PictureBox
+        {
+            Image = AppIconFactory.CreateBitmap(48),
+            Dock = DockStyle.Fill,
+            SizeMode = PictureBoxSizeMode.StretchImage,
+            Margin = new Padding(0, 0, 10, 0)
+        };
+        brand.Controls.Add(brandIcon, 0, 0);
+        brand.SetRowSpan(brandIcon, 2);
+        brand.Controls.Add(new Label
+        {
+            Text = "Uptime Kuma",
+            Dock = DockStyle.Fill,
+            Font = new Font("Segoe UI Semibold", 12.5F, FontStyle.Bold, GraphicsUnit.Point),
+            TextAlign = ContentAlignment.BottomLeft
+        }, 1, 0);
+        brand.Controls.Add(new Label
+        {
+            Text = "Agent",
+            Dock = DockStyle.Fill,
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point),
+            TextAlign = ContentAlignment.TopLeft
+        }, 1, 1);
+        sidebarLayout.Controls.Add(brand, 0, 0);
+
+        _sidebarNav = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            Padding = new Padding(0, 8, 0, 0)
+        };
+        sidebarLayout.Controls.Add(_sidebarNav, 0, 1);
+
+        _sidebarVersion = new Label
+        {
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Font = new Font("Consolas", 8.5F, FontStyle.Regular, GraphicsUnit.Point),
+            Text = "v" + AppVersion.Current
+        };
+        sidebarLayout.Controls.Add(_sidebarVersion, 0, 2);
+
+        _shellLayout.Controls.Add(_sidebarPanel, 0, 0);
+        _shellLayout.Controls.Add(mainLayout, 1, 0);
+        Controls.Add(_shellLayout);
+
+        mainLayout.RowStyles[0].Height = 78;
+        mainLayout.RowStyles[2].Height = 30;
+        tabMain.Appearance = TabAppearance.FlatButtons;
+        tabMain.ItemSize = new Size(0, 1);
+        tabMain.SizeMode = TabSizeMode.Fixed;
+
+        BuildHeaderChrome();
+        tabMain.SelectedIndexChanged += (_, _) => RefreshNavigation();
+    }
+
+    private void BuildHeaderChrome()
+    {
+        headerPanel.Controls.Clear();
+        headerPanel.Padding = new Padding(22, 12, 22, 10);
+
+        var header = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 1,
+            Margin = new Padding(0)
+        };
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 340));
+
+        var titleStack = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, ColumnCount = 1 };
+        titleStack.RowStyles.Add(new RowStyle(SizeType.Percent, 58));
+        titleStack.RowStyles.Add(new RowStyle(SizeType.Percent, 42));
+        _sectionTitle = new Label
+        {
+            Dock = DockStyle.Fill,
+            Text = I18n.T("Allgemein"),
+            Font = new Font("Segoe UI Semibold", 18F, FontStyle.Bold, GraphicsUnit.Point),
+            TextAlign = ContentAlignment.BottomLeft
+        };
+        _sectionSubtitle = new Label
+        {
+            Dock = DockStyle.Fill,
+            Text = I18n.T("Lokale Hosts, TCP-Ports und Windows-Dienste im Blick behalten"),
+            Font = new Font("Segoe UI", 9.5F, FontStyle.Regular, GraphicsUnit.Point),
+            TextAlign = ContentAlignment.TopLeft
+        };
+        titleStack.Controls.Add(_sectionTitle, 0, 0);
+        titleStack.Controls.Add(_sectionSubtitle, 0, 1);
+        header.Controls.Add(titleStack, 0, 0);
+
+        var actions = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.RightToLeft,
+            WrapContents = false,
+            Padding = new Padding(0, 12, 0, 0)
+        };
+        _btnThemeToggle = CreateButton("Theme", (_, _) => ToggleTheme());
+        _btnThemeToggle.Width = 86;
+        headerBadge.Width = 142;
+        headerBadge.Height = 34;
+        headerBadge.Margin = new Padding(8, 0, 0, 0);
+        actions.Controls.Add(headerBadge);
+        actions.Controls.Add(_btnThemeToggle);
+        header.Controls.Add(actions, 1, 0);
+
+        headerPanel.Controls.Add(header);
+    }
+
+    private void BuildNavigation()
+    {
+        _navItems.Clear();
+        _sidebarNav.Controls.Clear();
+        AddNavItem(tabGeneral, I18n.T("Allgemein"));
+        AddNavItem(tabPing, I18n.T("Ping-Checks"));
+        AddNavItem(tabTcp, I18n.T("TCP-Checks"));
+        AddNavItem(tabServices, I18n.T("Windows-Dienste"));
+        AddNavItem(tabDrives, I18n.T("Laufwerke"));
+        AddNavItem(tabLogs, I18n.T("Logs"));
+        AddNavItem(_tabSettings, I18n.T("Einstellungen"));
+        RefreshNavigation();
+    }
+
+    private void AddNavItem(TabPage page, string label)
+    {
+        var button = new Button
+        {
+            Tag = page,
+            Text = label,
+            Width = 208,
+            Height = 42,
+            Margin = new Padding(0, 0, 0, 7),
+            TextAlign = ContentAlignment.MiddleLeft,
+            FlatStyle = FlatStyle.Flat,
+            Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold, GraphicsUnit.Point),
+            Padding = new Padding(14, 0, 10, 0)
+        };
+        button.FlatAppearance.BorderSize = 0;
+        button.Click += (_, _) =>
+        {
+            tabMain.SelectedTab = page;
+            RefreshNavigation();
+        };
+        _sidebarNav.Controls.Add(button);
+        _navItems.Add((page, button, null));
+    }
+
+    private void RefreshNavigation()
+    {
+        if (_navItems.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var item in _navItems)
+        {
+            var selected = tabMain.SelectedTab == item.Page;
+            var count = GetNavCount(item.Page);
+            item.Button.Text = count is null ? item.Page.Text : $"{item.Page.Text}   {count}";
+            item.Button.BackColor = selected ? _theme.AccentSoft : _theme.Surface;
+            item.Button.ForeColor = selected ? _theme.AccentDark : _theme.MutedText;
+        }
+
+        var (title, subtitle) = GetSectionText(tabMain.SelectedTab);
+        _sectionTitle.Text = title;
+        _sectionSubtitle.Text = subtitle;
+    }
+
+    private int? GetNavCount(TabPage page)
+    {
+        if (page == tabGeneral)
+        {
+            return _config.PingChecks.Count + _config.TcpChecks.Count + _config.ServiceChecks.Count + _config.DriveChecks.Count;
+        }
+
+        if (page == tabPing)
+        {
+            return _config.PingChecks.Count;
+        }
+
+        if (page == tabTcp)
+        {
+            return _config.TcpChecks.Count;
+        }
+
+        if (page == tabServices)
+        {
+            return _config.ServiceChecks.Count;
+        }
+
+        if (page == tabDrives)
+        {
+            return _config.DriveChecks.Count;
+        }
+
+        return null;
+    }
+
+    private (string Title, string Subtitle) GetSectionText(TabPage? page)
+    {
+        if (page == tabPing)
+        {
+            return (I18n.T("Ping-Checks"), I18n.T("Erreichbarkeit lokaler Hosts"));
+        }
+
+        if (page == tabTcp)
+        {
+            return (I18n.T("TCP-Checks"), I18n.T("Offene Ports und Endpunkte"));
+        }
+
+        if (page == tabServices)
+        {
+            return (I18n.T("Windows-Dienste"), I18n.T("Status der überwachten Dienste"));
+        }
+
+        if (page == tabDrives)
+        {
+            return (I18n.T("Laufwerke"), I18n.T("Speicher und Mountpoints"));
+        }
+
+        if (page == tabLogs)
+        {
+            return (I18n.T("Logs"), I18n.T("Ereignisprotokoll des Agents"));
+        }
+
+        if (page == _tabSettings)
+        {
+            return (I18n.T("Einstellungen"), I18n.T("Globale Konfiguration und Watchdog"));
+        }
+
+        return (I18n.T("Übersicht"), I18n.T("Alle Monitore auf einen Blick"));
+    }
+
+    private void ToggleTheme()
+    {
+        _config.Global.Theme = string.Equals(ThemeModes.Normalize(_config.Global.Theme), "Dark", StringComparison.OrdinalIgnoreCase)
+            ? "Light"
+            : "Dark";
+        SelectComboValue(_cmbTheme, _config.Global.Theme);
+        _theme = ThemeModes.PaletteFor(_config.Global.Theme);
+        ApplyTheme();
+    }
+
     private void BuildGeneralTab()
     {
         var root = new TableLayoutPanel
@@ -189,19 +491,20 @@ public partial class MainForm : Form
             ColumnCount = 1,
             RowCount = 3
         };
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 210));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 285));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 132));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 112));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.Padding = new Padding(10);
         tabGeneral.Controls.Add(root);
 
         var top = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2 };
-        top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 52));
-        top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 48));
+        top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45));
+        top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55));
         root.Controls.Add(top, 0, 0);
 
-        var statusBox = new GroupBox { Text = I18n.T("Agent-Status"), Dock = DockStyle.Fill };
+        var statusBox = CreateCard();
         var statusTable = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(10) };
-        statusTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 170));
+        statusTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
         statusTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         statusBox.Controls.Add(statusTable);
         _lblAgentStatus = AddStatusRow(statusTable, I18n.T("Agent"));
@@ -212,12 +515,13 @@ public partial class MainForm : Form
         _lblComputer = AddStatusRow(statusTable, I18n.T("Computername"));
         top.Controls.Add(statusBox, 0, 0);
 
+        var actionsCard = CreateCard();
         var buttonPanel = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = true,
-            Padding = new Padding(8)
+            Padding = new Padding(2)
         };
         buttonPanel.Controls.Add(CreateButton(I18n.T("Monitoring starten"), (_, _) => StartMonitoring()));
         buttonPanel.Controls.Add(CreateButton(I18n.T("Monitoring stoppen"), (_, _) => StopMonitoring()));
@@ -229,52 +533,19 @@ public partial class MainForm : Form
         _btnInstallUpdate = CreateButton("Update", async (_, _) => await InstallUpdateAsync());
         _btnInstallUpdate.Enabled = false;
         buttonPanel.Controls.Add(_btnInstallUpdate);
-        top.Controls.Add(buttonPanel, 1, 0);
+        actionsCard.Controls.Add(buttonPanel);
+        top.Controls.Add(actionsCard, 1, 0);
 
-        var settingsArea = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2 };
-        settingsArea.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58));
-        settingsArea.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
-        root.Controls.Add(settingsArea, 0, 1);
-
-        var globalBox = new GroupBox { Text = I18n.T("Globale Einstellungen"), Dock = DockStyle.Fill };
-        var globalTable = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, Padding = new Padding(10) };
-        globalTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 190));
-        globalTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
-        globalTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 190));
-        globalTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        globalBox.Controls.Add(globalTable);
-        _numDefaultInterval = AddNumber(globalTable, I18n.T("Standard-Intervall (s)"), 5, 86400, 30, 0, 0);
-        _numHttpTimeout = AddNumber(globalTable, I18n.T("HTTP-Timeout (ms)"), 500, 120000, 5000, 2, 0);
-        _numTcpTimeout = AddNumber(globalTable, I18n.T("TCP-Timeout (ms)"), 500, 120000, 3000, 0, 1);
-        _numPingTimeout = AddNumber(globalTable, I18n.T("Ping-Timeout (ms)"), 500, 120000, 3000, 2, 1);
-        _cmbLogLevel = AddOptionCombo(globalTable, I18n.T("Log-Level"), LogLevelKinds.All, I18n.LogLevelName, 0, 2);
-        _cmbTheme = AddOptionCombo(globalTable, I18n.T("Darstellung"), ThemeModes.All, I18n.ThemeName, 2, 2);
-        _cmbLanguage = AddLanguageCombo(globalTable, I18n.T("Sprache"), 0, 3);
-        _chkMaskPushUrls = AddCheck(globalTable, I18n.T("Push-URLs maskieren"), 2, 3);
-        _chkAutostart = AddCheck(globalTable, I18n.T("Autostart aktivieren"), 0, 4);
-        _chkStartMinimized = AddCheck(globalTable, I18n.T("Start minimiert"), 2, 4);
-        _chkMinimizeToTray = AddCheck(globalTable, I18n.T("Beim Schließen in Tray"), 0, 5);
-        _chkSendMachineInfo = AddCheck(globalTable, I18n.T("Maschineninfos mitsenden"), 2, 5);
-        _chkMonitoringAutoStart = AddCheck(globalTable, I18n.T("Monitoring automatisch starten"), 0, 6);
-        _cmbTheme.SelectedIndexChanged += (_, _) =>
-        {
-            _config.Global.Theme = GetComboValue(_cmbTheme, "Light");
-            _theme = ThemeModes.PaletteFor(_config.Global.Theme);
-            ApplyTheme();
-        };
-        settingsArea.Controls.Add(globalBox, 0, 0);
-
-        var watchdogBox = new GroupBox { Text = I18n.T("Watchdog"), Dock = DockStyle.Fill };
-        var watchdogTable = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(10) };
-        watchdogTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 210));
-        watchdogTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        watchdogBox.Controls.Add(watchdogTable);
-        _chkWatchdogEnabled = AddCheck(watchdogTable, I18n.T("Watchdog aktiv"), 0, 0);
-        _txtWatchdogPushUrl = AddText(watchdogTable, I18n.T("Watchdog-Push-URL"), 0, 1);
-        _numWatchdogInterval = AddNumber(watchdogTable, I18n.T("Intervall (s)"), 5, 86400, 60, 0, 2);
-        _numWatchdogMax = AddNumber(watchdogTable, I18n.T("Max. ohne Erfolg (s)"), 30, 604800, 300, 0, 3);
-        _chkWatchdogMachineInfo = AddCheck(watchdogTable, I18n.T("Maschineninfos mitsenden"), 0, 4);
-        settingsArea.Controls.Add(watchdogBox, 1, 0);
+        var kpiGrid = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, Padding = new Padding(0, 4, 0, 4) };
+        kpiGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+        kpiGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+        kpiGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+        kpiGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+        _lblKpiTotal = AddMetricCard(kpiGrid, I18n.T("Monitore"), "0", 0);
+        _lblKpiOk = AddMetricCard(kpiGrid, "OK", "0", 1);
+        _lblKpiDown = AddMetricCard(kpiGrid, I18n.T("Fehler"), "0", 2);
+        _lblKpiAvg = AddMetricCard(kpiGrid, I18n.T("Ø Antwort"), "0 ms", 3);
+        root.Controls.Add(kpiGrid, 0, 1);
 
         _statusGrid = CreateGrid();
         _statusGrid.Columns.Add("Type", I18n.T("Typ"));
@@ -289,7 +560,95 @@ public partial class MainForm : Form
         _statusGrid.Columns.Add("Next", I18n.T("Nächste Ausführung"));
         _statusGrid.Columns.Add("Push", I18n.T("Letzter Push"));
         _statusGrid.Columns.Add("Http", I18n.T("HTTP"));
-        root.Controls.Add(_statusGrid, 0, 2);
+
+        var tableCard = CreateCard();
+        var tableLayout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, ColumnCount = 1 };
+        tableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+        tableLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        tableCard.Controls.Add(tableLayout);
+        var filterPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.RightToLeft,
+            WrapContents = false,
+            Padding = new Padding(0, 4, 0, 4)
+        };
+        _cmbStatusFilter = new ComboBox { Width = 130, DropDownStyle = ComboBoxStyle.DropDownList };
+        _cmbStatusFilter.Items.AddRange(new object[] { I18n.T("Alle"), "OK", I18n.T("Fehler"), I18n.T("Warnung"), I18n.T("Unbekannt") });
+        _cmbStatusFilter.SelectedIndex = 0;
+        _cmbStatusFilter.SelectedIndexChanged += (_, _) => RefreshStatusGrid();
+        _txtMonitorSearch = new TextBox { Width = 260, PlaceholderText = I18n.T("Suchen") };
+        _txtMonitorSearch.TextChanged += (_, _) => RefreshStatusGrid();
+        filterPanel.Controls.Add(_cmbStatusFilter);
+        filterPanel.Controls.Add(_txtMonitorSearch);
+        filterPanel.Controls.Add(new Label
+        {
+            Text = I18n.T("Aktuelle Monitore"),
+            AutoSize = true,
+            Margin = new Padding(0, 8, 16, 0),
+            Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold, GraphicsUnit.Point)
+        });
+        tableLayout.Controls.Add(filterPanel, 0, 0);
+        tableLayout.Controls.Add(_statusGrid, 0, 1);
+        root.Controls.Add(tableCard, 0, 2);
+    }
+
+    private void BuildSettingsTab()
+    {
+        _tabSettings = new TabPage
+        {
+            Text = I18n.T("Einstellungen"),
+            Padding = new Padding(10),
+            UseVisualStyleBackColor = true
+        };
+        tabMain.Controls.Add(_tabSettings);
+
+        var settingsArea = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(10) };
+        settingsArea.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58));
+        settingsArea.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
+        _tabSettings.Controls.Add(settingsArea);
+
+        var globalBox = CreateCard();
+        var globalTable = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, Padding = new Padding(6) };
+        globalTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 190));
+        globalTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
+        globalTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 190));
+        globalTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        globalBox.Controls.Add(globalTable);
+        AddCardTitle(globalTable, I18n.T("Globale Einstellungen"), 0);
+        _numDefaultInterval = AddNumber(globalTable, I18n.T("Standard-Intervall (s)"), 5, 86400, 30, 0, 1);
+        _numHttpTimeout = AddNumber(globalTable, I18n.T("HTTP-Timeout (ms)"), 500, 120000, 5000, 2, 1);
+        _numTcpTimeout = AddNumber(globalTable, I18n.T("TCP-Timeout (ms)"), 500, 120000, 3000, 0, 2);
+        _numPingTimeout = AddNumber(globalTable, I18n.T("Ping-Timeout (ms)"), 500, 120000, 3000, 2, 2);
+        _cmbLogLevel = AddOptionCombo(globalTable, I18n.T("Log-Level"), LogLevelKinds.All, I18n.LogLevelName, 0, 3);
+        _cmbTheme = AddOptionCombo(globalTable, I18n.T("Darstellung"), ThemeModes.All, I18n.ThemeName, 2, 3);
+        _cmbLanguage = AddLanguageCombo(globalTable, I18n.T("Sprache"), 0, 4);
+        _chkMaskPushUrls = AddCheck(globalTable, I18n.T("Push-URLs maskieren"), 2, 4);
+        _chkAutostart = AddCheck(globalTable, I18n.T("Autostart aktivieren"), 0, 5);
+        _chkStartMinimized = AddCheck(globalTable, I18n.T("Start minimiert"), 2, 5);
+        _chkMinimizeToTray = AddCheck(globalTable, I18n.T("Beim Schließen in Tray"), 0, 6);
+        _chkSendMachineInfo = AddCheck(globalTable, I18n.T("Maschineninfos mitsenden"), 2, 6);
+        _chkMonitoringAutoStart = AddCheck(globalTable, I18n.T("Monitoring automatisch starten"), 0, 7);
+        _cmbTheme.SelectedIndexChanged += (_, _) =>
+        {
+            _config.Global.Theme = GetComboValue(_cmbTheme, "Light");
+            _theme = ThemeModes.PaletteFor(_config.Global.Theme);
+            ApplyTheme();
+        };
+        settingsArea.Controls.Add(globalBox, 0, 0);
+
+        var watchdogBox = CreateCard();
+        var watchdogTable = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(6) };
+        watchdogTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 210));
+        watchdogTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        watchdogBox.Controls.Add(watchdogTable);
+        AddCardTitle(watchdogTable, I18n.T("Watchdog"), 0);
+        _chkWatchdogEnabled = AddCheck(watchdogTable, I18n.T("Watchdog aktiv"), 0, 1);
+        _txtWatchdogPushUrl = AddText(watchdogTable, I18n.T("Watchdog-Push-URL"), 0, 2);
+        _numWatchdogInterval = AddNumber(watchdogTable, I18n.T("Intervall (s)"), 5, 86400, 60, 0, 3);
+        _numWatchdogMax = AddNumber(watchdogTable, I18n.T("Max. ohne Erfolg (s)"), 30, 604800, 300, 0, 4);
+        _chkWatchdogMachineInfo = AddCheck(watchdogTable, I18n.T("Maschineninfos mitsenden"), 0, 5);
+        settingsArea.Controls.Add(watchdogBox, 1, 0);
     }
 
     private void BuildPingTab()
@@ -340,7 +699,7 @@ public partial class MainForm : Form
 
     private void BuildServicesTab()
     {
-        var root = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3, ColumnCount = 1 };
+        var root = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3, ColumnCount = 1, Padding = new Padding(10) };
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 48));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 52));
@@ -357,7 +716,9 @@ public partial class MainForm : Form
         _serviceGrid.Columns.Add("RestartServices", I18n.T("Fehleraktion"));
         _serviceGrid.Columns.Add("Push", I18n.T("Push-URL"));
         _serviceGrid.Columns.Add("Note", I18n.T("Notiz"));
-        root.Controls.Add(_serviceGrid, 0, 0);
+        var serviceCard = CreateCard();
+        serviceCard.Controls.Add(_serviceGrid);
+        root.Controls.Add(serviceCard, 0, 0);
 
         var buttons = CreateButtonPanel(
             (I18n.T("Hinzufügen"), (_, _) => AddServiceCheck(null)),
@@ -377,7 +738,9 @@ public partial class MainForm : Form
         _availableServicesGrid.Columns.Add("ServiceName", I18n.T("Dienstname"));
         _availableServicesGrid.Columns.Add("Status", I18n.T("Status"));
         _availableServicesGrid.Columns.Add("CanStop", I18n.T("Stoppbar"));
-        root.Controls.Add(_availableServicesGrid, 0, 2);
+        var localServiceCard = CreateCard();
+        localServiceCard.Controls.Add(_availableServicesGrid);
+        root.Controls.Add(localServiceCard, 0, 2);
     }
 
     private void BuildDrivesTab()
@@ -406,7 +769,7 @@ public partial class MainForm : Form
 
     private void BuildLogsTab()
     {
-        var root = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, ColumnCount = 1 };
+        var root = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, ColumnCount = 1, Padding = new Padding(10) };
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         tabLogs.Controls.Add(root);
@@ -425,7 +788,9 @@ public partial class MainForm : Form
             WordWrap = true,
             Font = new Font(FontFamily.GenericMonospace, 9)
         };
-        root.Controls.Add(_txtLogs, 0, 1);
+        var logCard = CreateCard();
+        logCard.Controls.Add(_txtLogs);
+        root.Controls.Add(logCard, 0, 1);
         RefreshLogText();
     }
 
@@ -623,7 +988,10 @@ public partial class MainForm : Form
         _lblLastError.Text = _monitoring.LastError;
         _lblVersion.Text = AppVersion.Current;
         _lblComputer.Text = Environment.MachineName;
-        statusLabel.Text = monitoringActive ? I18n.T("Monitoring aktiv") : I18n.T("Monitoring inaktiv");
+        var statuses = _monitoring.GetStatuses();
+        var ok = statuses.Count(status => status.Enabled && status.State == AgentCheckState.Up);
+        var down = statuses.Count(status => status.Enabled && status.State == AgentCheckState.Down);
+        statusLabel.Text = $"{(monitoringActive ? I18n.T("Monitoring aktiv") : I18n.T("Monitoring inaktiv"))} | {ok} OK / {down} Down";
         headerBadge.Text = monitoringActive ? I18n.T("Monitoring aktiv") : I18n.T("Monitoring inaktiv");
         headerBadge.BackColor = monitoringActive ? _theme.AccentSoft : _theme.SurfaceAlt;
         headerBadge.ForeColor = monitoringActive ? _theme.AccentDark : _theme.MutedText;
@@ -637,10 +1005,50 @@ public partial class MainForm : Form
             return;
         }
 
+        var statuses = _monitoring.GetStatuses();
+        RefreshKpiCards(statuses);
+
+        var query = _txtMonitorSearch?.Text.Trim() ?? "";
+        var filter = _cmbStatusFilter?.SelectedItem?.ToString() ?? I18n.T("Alle");
+        var displayStatuses = statuses.Where(status =>
+        {
+            var matchesQuery = string.IsNullOrWhiteSpace(query)
+                || status.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase)
+                || status.Target.Contains(query, StringComparison.CurrentCultureIgnoreCase)
+                || status.LastMessage.Contains(query, StringComparison.CurrentCultureIgnoreCase)
+                || status.LastError.Contains(query, StringComparison.CurrentCultureIgnoreCase);
+            if (!matchesQuery)
+            {
+                return false;
+            }
+
+            if (string.Equals(filter, "OK", StringComparison.OrdinalIgnoreCase))
+            {
+                return status.State == AgentCheckState.Up;
+            }
+
+            if (string.Equals(filter, I18n.T("Fehler"), StringComparison.OrdinalIgnoreCase))
+            {
+                return status.State == AgentCheckState.Down;
+            }
+
+            if (string.Equals(filter, I18n.T("Warnung"), StringComparison.OrdinalIgnoreCase))
+            {
+                return status.State == AgentCheckState.Warning;
+            }
+
+            if (string.Equals(filter, I18n.T("Unbekannt"), StringComparison.OrdinalIgnoreCase))
+            {
+                return status.State == AgentCheckState.Unknown;
+            }
+
+            return true;
+        }).ToList();
+
         var gridState = CaptureGridState(_statusGrid);
         _statusGrid.SuspendLayout();
         _statusGrid.Rows.Clear();
-        foreach (var status in _monitoring.GetStatuses())
+        foreach (var status in displayStatuses)
         {
             var index = _statusGrid.Rows.Add(
                 I18n.CheckTypeName(status.Type),
@@ -664,6 +1072,29 @@ public partial class MainForm : Form
         RestoreGridState(_statusGrid, gridState);
         _statusGrid.ResumeLayout();
         UpdateTrayIcon();
+    }
+
+    private void RefreshKpiCards(IReadOnlyCollection<CheckRuntimeStatus> statuses)
+    {
+        if (_lblKpiTotal is null)
+        {
+            return;
+        }
+
+        var enabled = statuses.Where(status => status.Enabled).ToList();
+        var up = enabled.Count(status => status.State == AgentCheckState.Up);
+        var down = enabled.Count(status => status.State == AgentCheckState.Down);
+        var responseValues = enabled.Where(status => status.LastResponseMs.HasValue).Select(status => status.LastResponseMs!.Value).ToList();
+        var avg = responseValues.Count == 0 ? 0 : (long)Math.Round(responseValues.Average());
+
+        _lblKpiTotal.Text = enabled.Count.ToString();
+        _lblKpiOk.Text = up.ToString();
+        _lblKpiDown.Text = down.ToString();
+        _lblKpiAvg.Text = responseValues.Count == 0 ? "-" : avg + " ms";
+        _lblKpiOk.ForeColor = _theme.AccentDark;
+        _lblKpiDown.ForeColor = down > 0 ? _theme.Danger : _theme.MutedText;
+        _lblKpiAvg.ForeColor = _theme.Text;
+        RefreshNavigation();
     }
 
     private bool IsMonitoringActive()
@@ -722,11 +1153,17 @@ public partial class MainForm : Form
         ForeColor = _theme.Text;
 
         headerPanel.BackColor = _theme.Surface;
-        headerTitle.ForeColor = _theme.Text;
-        headerSubtitle.ForeColor = _theme.MutedText;
+        _shellLayout.BackColor = _theme.Window;
+        _sidebarPanel.BackColor = _theme.Surface;
+        _btnThemeToggle.Text = string.Equals(ThemeModes.Normalize(_config.Global.Theme), "Dark", StringComparison.OrdinalIgnoreCase)
+            ? "Light"
+            : "Dark";
         mainLayout.BackColor = _theme.Window;
 
-        StyleControl(mainLayout);
+        StyleControl(_shellLayout);
+        _sectionTitle.ForeColor = _theme.Text;
+        _sectionSubtitle.ForeColor = _theme.MutedText;
+        _sidebarVersion.ForeColor = _theme.MutedText;
         StyleStatusStrip();
         StyleTrayMenu();
         StyleGrid(_statusGrid);
@@ -737,12 +1174,20 @@ public partial class MainForm : Form
         StyleGrid(_availableServicesGrid);
         RefreshAgentLabels();
         RefreshStatusGrid();
+        RefreshNavigation();
     }
 
     private void StyleControl(Control control)
     {
         switch (control)
         {
+            case ModernCardPanel card:
+                card.FillColor = _theme.Surface;
+                card.BorderColor = _theme.Border;
+                card.BackColor = control.Parent is null ? _theme.Window : control.Parent.BackColor;
+                card.ForeColor = _theme.Text;
+                card.Invalidate();
+                break;
             case DataGridView grid:
                 StyleGrid(grid);
                 return;
@@ -776,14 +1221,14 @@ public partial class MainForm : Form
                 tabPage.BackColor = _theme.Window;
                 tabPage.ForeColor = _theme.Text;
                 break;
-            case Label label when label != headerTitle && label != headerSubtitle && label != headerBadge:
+            case Label label when label != headerBadge:
                 label.BackColor = Color.Transparent;
                 label.ForeColor = _theme.Text;
                 break;
             case Panel or TableLayoutPanel or FlowLayoutPanel:
                 if (control != headerPanel)
                 {
-                    control.BackColor = control.Parent is GroupBox ? _theme.Surface : _theme.Window;
+                    control.BackColor = control.Parent is GroupBox or ModernCardPanel ? _theme.Surface : _theme.Window;
                     control.ForeColor = _theme.Text;
                 }
                 break;
@@ -803,8 +1248,8 @@ public partial class MainForm : Form
         button.FlatStyle = FlatStyle.Flat;
         button.FlatAppearance.BorderSize = secondary ? 1 : 0;
         button.FlatAppearance.BorderColor = _theme.Border;
-        button.BackColor = danger ? _theme.Danger : secondary ? _theme.SurfaceAlt : _theme.Accent;
-        button.ForeColor = danger ? Color.White : !secondary ? _theme.ButtonText : _theme.Text;
+        button.BackColor = !button.Enabled ? _theme.Disabled : danger ? _theme.Danger : secondary ? _theme.SurfaceAlt : _theme.Accent;
+        button.ForeColor = !button.Enabled ? _theme.MutedText : danger ? Color.White : !secondary ? _theme.ButtonText : _theme.Text;
         button.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold, GraphicsUnit.Point);
         button.Padding = new Padding(10, 3, 10, 3);
         button.Height = Math.Max(button.Height, 34);
@@ -870,6 +1315,7 @@ public partial class MainForm : Form
         RefreshTcpGrid();
         RefreshServiceGrid();
         RefreshDriveGrid();
+        RefreshNavigation();
     }
 
     private void RefreshPingGrid()
@@ -1857,6 +2303,59 @@ public partial class MainForm : Form
         return textBox;
     }
 
+    private ModernCardPanel CreateCard()
+    {
+        return new ModernCardPanel
+        {
+            Dock = DockStyle.Fill,
+            FillColor = _theme.Surface,
+            BorderColor = _theme.Border,
+            BackColor = Color.Transparent
+        };
+    }
+
+    private Label AddMetricCard(TableLayoutPanel parent, string label, string value, int column)
+    {
+        var card = CreateCard();
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, ColumnCount = 1 };
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 45));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 55));
+        card.Controls.Add(layout);
+
+        layout.Controls.Add(new Label
+        {
+            Text = label,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.BottomLeft,
+            Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold, GraphicsUnit.Point)
+        }, 0, 0);
+
+        var valueLabel = new Label
+        {
+            Text = value,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.TopLeft,
+            Font = new Font("Consolas", 20F, FontStyle.Bold, GraphicsUnit.Point)
+        };
+        layout.Controls.Add(valueLabel, 0, 1);
+        parent.Controls.Add(card, column, 0);
+        return valueLabel;
+    }
+
+    private static void AddCardTitle(TableLayoutPanel table, string text, int row)
+    {
+        EnsureRows(table, row + 1);
+        var title = new Label
+        {
+            Text = text,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Font = new Font("Segoe UI Semibold", 11F, FontStyle.Bold, GraphicsUnit.Point)
+        };
+        table.Controls.Add(title, 0, row);
+        table.SetColumnSpan(title, table.ColumnCount);
+    }
+
     private static CheckBox AddCheck(TableLayoutPanel table, string text, int column, int row)
     {
         EnsureRows(table, row + 1);
@@ -1910,13 +2409,15 @@ public partial class MainForm : Form
         return panel;
     }
 
-    private static void AddGridWithButtons(TabPage tabPage, DataGridView grid, Control buttons)
+    private void AddGridWithButtons(TabPage tabPage, DataGridView grid, Control buttons)
     {
-        var root = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, ColumnCount = 1 };
+        var root = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, ColumnCount = 1, Padding = new Padding(10) };
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.Controls.Add(buttons, 0, 0);
-        root.Controls.Add(grid, 0, 1);
+        var gridCard = CreateCard();
+        gridCard.Controls.Add(grid);
+        root.Controls.Add(gridCard, 0, 1);
         tabPage.Controls.Add(root);
     }
 
