@@ -74,8 +74,10 @@ internal static class Program
 
         logger.Info("Anwendung gestartet");
 
-        var startMinimized = args.Any(arg => string.Equals(arg, "--minimized", StringComparison.OrdinalIgnoreCase))
-                             || config.Global.StartMinimized;
+        var forceWindow = args.Any(arg => string.Equals(arg, "--windowed", StringComparison.OrdinalIgnoreCase));
+        var startMinimized = !forceWindow
+                             && (args.Any(arg => string.Equals(arg, "--minimized", StringComparison.OrdinalIgnoreCase))
+                                 || config.Global.StartMinimized);
 
         using var form = new MainForm(config, configService, logger, monitoring, autostart, windowsServices, startMinimized);
         if (config.Global.MonitoringAutoStart && !serviceIsRunning)

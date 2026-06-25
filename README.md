@@ -4,7 +4,7 @@ Native Windows tray agent und Headless-Linux-Agent für Uptime-Kuma-Push-Monitor
 
 Die GUI besitzt ein Uptime-Kuma-inspiriertes Branding, ein eigenes Fenster-/Tray-Icon sowie Light- und Dark-Modus.
 
-Ab Version 1.0.9 nutzt die Windows-App eine Dashboard-Oberfläche mit Sidebar-Navigation, KPI-Karten, Monitor-Suche, Statusfilter, eigener Einstellungsseite und weiterhin allen bisherigen Funktionen für Ping-, TCP-, Dienst-, Laufwerks-, Log- und Update-Workflows.
+Ab Version 1.0.10 nutzt die Windows-App eine Dashboard-Oberfläche mit Sidebar-Navigation, KPI-Karten, Monitor-Suche, Statusfilter, eigener Einstellungsseite und weiterhin allen bisherigen Funktionen für Ping-, TCP-, Dienst-, Laufwerks-, Log- und Update-Workflows.
 
 ## Voraussetzungen
 
@@ -12,7 +12,7 @@ Ab Version 1.0.9 nutzt die Windows-App eine Dashboard-Oberfläche mit Sidebar-Na
 - Zielrechner Linux: systemd-basierte Headless-Server ohne Desktop-Umgebung. Unterstützt werden self-contained Builds für `linux-x64` und `linux-arm64`.
 - Build-Rechner: .NET SDK 8 oder neuer mit Windows Desktop Workload.
 - Keine Python-, Node.js-, Docker-, NSSM- oder Drittanbieter-Tool-Abhängigkeiten.
-- Die WPF-UI-Abhängigkeit `WPF-UI` ist für die moderne Oberfläche im Projekt vorbereitet.
+- Die Windows-GUI nutzt Microsoft Edge WebView2 für das HTML-Dashboard. Auf aktuellen Windows-10/11-Systemen ist die Runtime meist bereits vorhanden.
 
 ## Windows Build
 
@@ -45,8 +45,8 @@ Beim ersten MSI-Build installiert das Skript das WiX Toolset automatisch lokal n
 Die fertige Datei liegt danach unter:
 
 ```text
-build\installer\UptimeKumaTrayAgent-Setup-1.0.9-x64.msi
-build\installer\UptimeKumaTrayAgent-Setup-1.0.9-x86.msi
+build\installer\UptimeKumaTrayAgent-Setup-1.0.10-x64.msi
+build\installer\UptimeKumaTrayAgent-Setup-1.0.10-x86.msi
 ```
 
 Der ältere selbstextrahierende EXE-Installer kann weiterhin gebaut werden:
@@ -58,7 +58,7 @@ BuildInstaller.cmd
 Die fertige Datei liegt danach unter:
 
 ```text
-build\installer\UptimeKumaTrayAgent-Setup-1.0.9.exe
+build\installer\UptimeKumaTrayAgent-Setup-1.0.10.exe
 ```
 
 Die Installer können für Neuinstallation und Updates verwendet werden. Bei Updates werden Dienst und Programmdateien aktualisiert, die Konfiguration und Logs unter `%ProgramData%\UptimeKumaTrayAgent` bleiben erhalten. Falls aus Version 1.0.3 noch eine Benutzer-Konfiguration unter `%AppData%\UptimeKumaTrayAgent` vorhanden ist und ProgramData leer ist oder nur eine Factory-Default-Konfiguration enthält, wird diese alte Konfiguration automatisch übernommen. Zusätzlich werden Startmenü-Einträge `UptimeKumaAgent` und `UptimeKumaAgent Konfiguration` angelegt, damit Windows-Suche Agent und Konfigurationsdatei findet.
@@ -67,7 +67,7 @@ Für normale Server ist `x64` empfohlen. `x86` ist das 32-bit-Paket für ältere
 
 ## Updates über GitHub Releases
 
-Ab Version 1.0.9 kann der Agent GitHub Releases von `yourShika/uptimekuma-agent` prüfen. In der Windows-GUI gibt es dafür `Check for Updates` und `Update`. `Check for Updates` sucht eine neuere Release-Version und ein passendes MSI für die aktuelle Architektur. `Update` lädt das MSI in einen temporären Ordner und startet den Installer mit Administratorabfrage. Push-URLs und Secrets werden dabei nicht geloggt.
+Ab Version 1.0.10 kann der Agent GitHub Releases von `yourShika/uptimekuma-agent` prüfen. In der Windows-GUI gibt es dafür `Check for Updates` und `Update`. `Check for Updates` sucht eine neuere Release-Version und ein passendes MSI für die aktuelle Architektur. `Update` lädt das MSI in einen temporären Ordner und startet den Installer mit Administratorabfrage. Push-URLs und Secrets werden dabei nicht geloggt.
 
 Unter Linux stehen die Headless-Befehle zur Verfügung:
 
@@ -89,8 +89,8 @@ Linux wird als headless/systemd-Agent gebaut, ohne WPF, WinForms, X11, Wayland, 
 Das Skript erstellt self-contained Builds und generische Archive:
 
 ```text
-build/uptime-kuma-agent-1.0.9-linux-x64.tar.gz
-build/uptime-kuma-agent-1.0.9-linux-arm64.tar.gz
+build/uptime-kuma-agent-1.0.10-linux-x64.tar.gz
+build/uptime-kuma-agent-1.0.10-linux-arm64.tar.gz
 ```
 
 Optional kann `BuildLinuxPackages.sh` verwendet werden. Es erzeugt die `.tar.gz`-Pakete immer, bereitet `.deb` vor, wenn `dpkg-deb` vorhanden ist, und überspringt `.rpm`, wenn `rpmbuild` fehlt.
@@ -100,8 +100,8 @@ Optional kann `BuildLinuxPackages.sh` verwendet werden. Es erzeugt die `.tar.gz`
 Ubuntu/Debian:
 
 ```bash
-tar -xzf uptime-kuma-agent-1.0.9-linux-x64.tar.gz
-cd uptime-kuma-agent-1.0.9-linux-x64
+tar -xzf uptime-kuma-agent-1.0.10-linux-x64.tar.gz
+cd uptime-kuma-agent-1.0.10-linux-x64
 sudo ./InstallLinux.sh
 ```
 
@@ -165,7 +165,7 @@ Install.cmd
 Oder komfortabel über den Setup-Installer:
 
 ```text
-UptimeKumaTrayAgent-Setup-1.0.9-x64.msi
+UptimeKumaTrayAgent-Setup-1.0.10-x64.msi
 ```
 
 Wichtig: `Install.cmd` muss als Administrator gestartet werden. Der Setup-Installer fragt bei Bedarf automatisch nach Administratorrechten. Der Dienst wird als `LocalSystem` mit Starttyp `Automatisch` eingerichtet und erscheint in `services.msc` als:

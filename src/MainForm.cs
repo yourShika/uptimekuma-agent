@@ -1,6 +1,10 @@
 using System.Diagnostics;
 using System.Drawing;
+using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Windows.Forms;
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.WinForms;
 using UptimeKumaTrayAgent.Models;
 using UptimeKumaTrayAgent.Services;
 using UptimeKumaTrayAgent.Utils;
@@ -38,6 +42,8 @@ public partial class MainForm : Form
     private Label _sectionTitle = null!;
     private Label _sectionSubtitle = null!;
     private Button _btnThemeToggle = null!;
+    private WebView2 _dashboardWebView = null!;
+    private bool _dashboardReady;
     private Label _lblAgentStatus = null!;
     private Label _lblMonitoring = null!;
     private Label _lblLastRun = null!;
@@ -118,19 +124,26 @@ public partial class MainForm : Form
         RefreshStatusGrid();
         RefreshAgentLabels();
         ApplyTheme();
+        BuildHtmlDashboard();
 
         _monitoring.StateChanged += (_, _) => RunOnUi(() =>
         {
             RefreshAgentLabels();
             RefreshTrayMenu();
+            _ = SyncDashboardAsync();
         });
-        _monitoring.StatusesChanged += (_, _) => RunOnUi(RefreshStatusGrid);
+        _monitoring.StatusesChanged += (_, _) => RunOnUi(() =>
+        {
+            RefreshStatusGrid();
+            _ = SyncDashboardAsync();
+        });
 
         _uiTimer.Interval = 1500;
         _uiTimer.Tick += (_, _) =>
         {
             RefreshAgentLabels();
             RefreshStatusGrid();
+            _ = SyncDashboardAsync();
             if (tabMain.SelectedTab == tabLogs)
             {
                 RefreshLogText();
@@ -197,6 +210,293 @@ public partial class MainForm : Form
         _appIcon = AppIconFactory.CreateIcon();
         Icon = _appIcon;
         headerIcon.Image = AppIconFactory.CreateBitmap(64);
+    }
+
+    private void BuildHtmlDashboard()
+    {
+        FormBorderStyle = FormBorderStyle.None;
+        _dashboardWebView = new WebView2
+        {
+            Dock = DockStyle.Fill,
+            DefaultBackgroundColor = Color.FromArgb(11, 14, 17)
+        };
+        Controls.Add(_dashboardWebView);
+        _dashboardWebView.BringToFront();
+        _ = InitializeDashboardAsync();
+    }
+
+    private async Task InitializeDashboardAsync()
+    {
+        try
+        {
+            var userData = Path.Combine(_configService.DataDirectory, "WebView2");
+            Directory.CreateDirectory(userData);
+            var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: userData);
+            await _dashboardWebView.EnsureCoreWebView2Async(environment);
+            _dashboardWebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+            _dashboardWebView.CoreWebView2.Settings.AreDevToolsEnabled = false;
+            _dashboardWebView.CoreWebView2.WebMessageReceived += async (_, e) => await HandleDashboardMessageAsync(e.WebMessageAsJson);
+            _dashboardWebView.NavigationCompleted += async (_, _) =>
+            {
+                _dashboardReady = true;
+                await InstallDashboardBridgeAsync();
+                await SyncDashboardAsync();
+            };
+
+            var dashboardPath = Path.Combine(AppContext.BaseDirectory, "Assets", "UptimeKumaAgentDashboard.html");
+            if (!File.Exists(dashboardPath))
+            {
+                dashboardPath = Path.Combine(AppContext.BaseDirectory, "UptimeKumaAgentDashboard.html");
+            }
+
+            _dashboardWebView.CoreWebView2.Navigate(new Uri(dashboardPath).AbsoluteUri);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("HTML-Dashboard konnte nicht initialisiert werden", ex);
+            MessageBox.Show(this, ex.Message, "HTML Dashboard", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private async Task InstallDashboardBridgeAsync()
+    {
+        if (_dashboardWebView.CoreWebView2 is null)
+        {
+            return;
+        }
+
+        var script = $$"""
+        (() => {
+          if (window.__uptimeAgentBridgeInstalled) return;
+          window.__uptimeAgentBridgeInstalled = true;
+          const send = (message) => {
+            try { window.chrome?.webview?.postMessage(message); } catch {}
+          };
+          const textOf = (element) => (element?.innerText || element?.textContent || '').trim();
+          const actionButtonStyle = 'display:flex;align-items:center;gap:7px;height:40px;padding:0 16px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);cursor:pointer;font-size:13px;font-weight:600';
+          const makeActionButton = (label, icon, name) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.dataset.agentBridge = '1';
+            button.style.cssText = actionButtonStyle;
+            button.innerHTML = `<span class="ms" style="font-size:18px">${icon}</span>${label}`;
+            button.addEventListener('click', () => send({ type: 'action', name }));
+            return button;
+          };
+          const ensureExtraActions = () => {
+            const configButton = Array.from(document.querySelectorAll('button')).find((button) => textOf(button) === 'Konfiguration öffnen');
+            const row = configButton?.parentElement;
+            if (!row || row.querySelector('[data-agent-extra-actions]')) return;
+            row.dataset.agentExtraActions = '1';
+            row.style.flexWrap = 'wrap';
+            row.append(
+              makeActionButton('Logordner öffnen', 'folder_open', 'logs'),
+              makeActionButton('Check for Updates', 'system_update_alt', 'checkUpdates'),
+              makeActionButton('Update', 'download', 'update')
+            );
+          };
+          const wireWindowControls = () => {
+            const icons = Array.from(document.querySelectorAll('.ms,.material-symbols-rounded'));
+            for (const icon of icons) {
+              const label = textOf(icon).toLowerCase();
+              const action = label === 'remove' ? 'minimize' : label === 'crop_square' ? 'maximize' : label === 'close' ? 'close' : '';
+              if (!action) continue;
+              const rect = icon.getBoundingClientRect();
+              if (rect.top > 44 || rect.right < window.innerWidth - 170) continue;
+              const target = icon.closest('button') || icon.parentElement;
+              if (!target || target.dataset.agentWindowAction === action) continue;
+              target.dataset.agentWindowAction = action;
+              target.style.cursor = 'pointer';
+              target.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                send({ type: 'window', action });
+              });
+            }
+          };
+          const wire = () => {
+            ensureExtraActions();
+            wireWindowControls();
+            document.querySelectorAll('button').forEach((button) => {
+              if (button.dataset.agentBridge) return;
+              const label = textOf(button);
+              const rect = button.getBoundingClientRect();
+              button.dataset.agentBridge = '1';
+              if (label.includes('Testlauf')) button.addEventListener('click', () => send({ type: 'action', name: 'test' }));
+              if (label === 'Speichern') button.addEventListener('click', () => send({ type: 'action', name: 'save' }));
+              if (label.includes('Konfiguration öffnen')) button.addEventListener('click', () => send({ type: 'action', name: 'config' }));
+              if (label.includes('Logordner öffnen')) button.addEventListener('click', () => send({ type: 'action', name: 'logs' }));
+              if (label.includes('Check for Updates')) button.addEventListener('click', () => send({ type: 'action', name: 'checkUpdates' }));
+              if (label === 'Update') button.addEventListener('click', () => send({ type: 'action', name: 'update' }));
+              if (label.includes('Monitoring aktiv') || label.includes('Monitoring pausiert')) {
+                button.addEventListener('click', () => send({ type: 'action', name: 'toggleMonitoring' }));
+              }
+              if (rect.top < 44 && rect.right > window.innerWidth - 170) {
+                const normalized = label.toLowerCase();
+                if (normalized === '-' || normalized === '−' || normalized.includes('min')) {
+                  button.addEventListener('click', () => send({ type: 'window', action: 'minimize' }));
+                } else if (normalized === '□' || normalized === '▢' || normalized.includes('max')) {
+                  button.addEventListener('click', () => send({ type: 'window', action: 'maximize' }));
+                } else if (normalized === '×' || normalized === 'x' || normalized.includes('close')) {
+                  button.addEventListener('click', () => send({ type: 'window', action: 'close' }));
+                }
+              }
+            });
+          };
+          document.addEventListener('mousedown', (event) => {
+            if (event.button !== 0 || event.clientY > 44 || event.target.closest('button,input,select,textarea')) return;
+            send({ type: 'window', action: 'drag' });
+          }, true);
+          const replaceText = (from, to) => {
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+            const nodes = [];
+            while (walker.nextNode()) nodes.push(walker.currentNode);
+            for (const node of nodes) {
+              if (node.nodeValue && node.nodeValue.includes(from)) node.nodeValue = node.nodeValue.split(from).join(to);
+            }
+          };
+          const setTextByLabel = (label, value) => {
+            const elements = Array.from(document.querySelectorAll('*')).filter((element) => textOf(element) === label);
+            for (const element of elements) {
+              const card = element.closest('div');
+              if (!card) continue;
+              const candidates = Array.from(card.querySelectorAll('div,span,strong')).filter((candidate) => /^\d+(\s?ms|%)?$|^-$/.test(textOf(candidate)));
+              if (candidates.length) {
+                candidates[0].textContent = value;
+                return;
+              }
+            }
+          };
+          window.__uptimeAgentSync = (data) => {
+            wire();
+            replaceText('v1.0.3', 'v' + data.version);
+            replaceText('PROXESS', data.machineName || 'PROXESS');
+            setTextByLabel('Monitore', String(data.total));
+            setTextByLabel('Erreichbar', String(data.up));
+            setTextByLabel('Ausfälle', String(data.down));
+            setTextByLabel('Ø Antwort', data.avgResponse);
+          };
+          setInterval(wire, 500);
+          wire();
+        })();
+        """;
+        await _dashboardWebView.CoreWebView2.ExecuteScriptAsync(script);
+    }
+
+    private async Task SyncDashboardAsync()
+    {
+        if (!_dashboardReady || _dashboardWebView.CoreWebView2 is null)
+        {
+            return;
+        }
+
+        var statuses = _monitoring.GetStatuses().Where(status => status.Enabled).ToList();
+        var responses = statuses.Where(status => status.LastResponseMs.HasValue).Select(status => status.LastResponseMs!.Value).ToList();
+        var payload = new
+        {
+            version = AppVersion.Current,
+            machineName = Environment.MachineName,
+            monitoring = IsMonitoringActive(),
+            total = statuses.Count,
+            up = statuses.Count(status => status.State == AgentCheckState.Up),
+            down = statuses.Count(status => status.State == AgentCheckState.Down),
+            warn = statuses.Count(status => status.State == AgentCheckState.Warning),
+            avgResponse = responses.Count == 0 ? "-" : (long)Math.Round(responses.Average()) + " ms",
+            lastRun = TimeFormatter.FormatDate(_monitoring.LastRun)
+        };
+        var json = JsonSerializer.Serialize(payload);
+        await _dashboardWebView.CoreWebView2.ExecuteScriptAsync($"window.__uptimeAgentSync && window.__uptimeAgentSync({json});");
+    }
+
+    private async Task HandleDashboardMessageAsync(string messageJson)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(messageJson);
+            var root = document.RootElement;
+            var type = root.TryGetProperty("type", out var typeElement) ? typeElement.GetString() : "";
+            if (string.Equals(type, "window", StringComparison.OrdinalIgnoreCase))
+            {
+                var action = root.TryGetProperty("action", out var actionElement) ? actionElement.GetString() : "";
+                HandleDashboardWindowAction(action);
+                return;
+            }
+
+            if (string.Equals(type, "action", StringComparison.OrdinalIgnoreCase))
+            {
+                var name = root.TryGetProperty("name", out var nameElement) ? nameElement.GetString() : "";
+                await HandleDashboardActionAsync(name);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("HTML-Dashboard-Aktion fehlgeschlagen", ex);
+        }
+    }
+
+    private void HandleDashboardWindowAction(string? action)
+    {
+        switch (action?.Trim().ToLowerInvariant())
+        {
+            case "minimize":
+                WindowState = FormWindowState.Minimized;
+                break;
+            case "maximize":
+                WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized;
+                break;
+            case "close":
+                Close();
+                break;
+            case "drag":
+                BeginNativeWindowDrag();
+                break;
+        }
+    }
+
+    private async Task HandleDashboardActionAsync(string? name)
+    {
+        switch (name?.Trim())
+        {
+            case "test":
+                await TestAllChecksAsync();
+                break;
+            case "save":
+                SaveConfig(showMessage: true);
+                break;
+            case "config":
+                OpenConfigFile();
+                break;
+            case "logs":
+                OpenLogsFolder();
+                break;
+            case "checkUpdates":
+                await CheckForUpdatesAsync();
+                break;
+            case "update":
+                await InstallUpdateAsync();
+                break;
+            case "toggleMonitoring":
+                if (IsMonitoringActive())
+                {
+                    StopMonitoring();
+                }
+                else
+                {
+                    StartMonitoring();
+                }
+                break;
+        }
+    }
+
+    private void BeginNativeWindowDrag()
+    {
+        if (WindowState == FormWindowState.Maximized)
+        {
+            WindowState = FormWindowState.Normal;
+        }
+
+        ReleaseCapture();
+        SendMessage(Handle, 0xA1, 0x2, 0);
     }
 
     private void BuildShellLayout()
@@ -2639,4 +2939,10 @@ public partial class MainForm : Form
             action();
         }
     }
+
+    [DllImport("user32.dll")]
+    private static extern bool ReleaseCapture();
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(IntPtr hwnd, int message, int wParam, int lParam);
 }
