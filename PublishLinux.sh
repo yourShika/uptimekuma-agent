@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT="${ROOT_DIR}/src/UptimeKumaAgent.Linux/UptimeKumaAgent.Linux.csproj"
-VERSION="1.0.10"
+VERSION="1.1.0"
 RIDS=("linux-x64" "linux-arm64")
 
 for rid in "${RIDS[@]}"; do
