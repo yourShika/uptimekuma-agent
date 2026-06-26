@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$version = "1.0.10"
+$version = "1.1.0"
 $manufacturer = "Kamil Bura"
 $productName = "Uptime Kuma Tray Agent"
 $serviceName = "UptimeKumaTrayAgent"

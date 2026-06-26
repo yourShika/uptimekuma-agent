@@ -215,6 +215,10 @@ public partial class MainForm : Form
     private void BuildHtmlDashboard()
     {
         FormBorderStyle = FormBorderStyle.None;
+        MinimumSize = new Size(900, 580);
+        Size = new Size(1200, 780);
+        StartPosition = FormStartPosition.CenterScreen;
+        BackColor = Color.FromArgb(11, 14, 17);
         _dashboardWebView = new WebView2
         {
             Dock = DockStyle.Fill,
@@ -239,7 +243,6 @@ public partial class MainForm : Form
             _dashboardWebView.NavigationCompleted += async (_, _) =>
             {
                 _dashboardReady = true;
-                await InstallDashboardBridgeAsync();
                 await SyncDashboardAsync();
             };
 
@@ -258,131 +261,6 @@ public partial class MainForm : Form
         }
     }
 
-    private async Task InstallDashboardBridgeAsync()
-    {
-        if (_dashboardWebView.CoreWebView2 is null)
-        {
-            return;
-        }
-
-        var script = $$"""
-        (() => {
-          if (window.__uptimeAgentBridgeInstalled) return;
-          window.__uptimeAgentBridgeInstalled = true;
-          const send = (message) => {
-            try { window.chrome?.webview?.postMessage(message); } catch {}
-          };
-          const textOf = (element) => (element?.innerText || element?.textContent || '').trim();
-          const actionButtonStyle = 'display:flex;align-items:center;gap:7px;height:40px;padding:0 16px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);cursor:pointer;font-size:13px;font-weight:600';
-          const makeActionButton = (label, icon, name) => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.dataset.agentBridge = '1';
-            button.style.cssText = actionButtonStyle;
-            button.innerHTML = `<span class="ms" style="font-size:18px">${icon}</span>${label}`;
-            button.addEventListener('click', () => send({ type: 'action', name }));
-            return button;
-          };
-          const ensureExtraActions = () => {
-            const configButton = Array.from(document.querySelectorAll('button')).find((button) => textOf(button) === 'Konfiguration öffnen');
-            const row = configButton?.parentElement;
-            if (!row || row.querySelector('[data-agent-extra-actions]')) return;
-            row.dataset.agentExtraActions = '1';
-            row.style.flexWrap = 'wrap';
-            row.append(
-              makeActionButton('Logordner öffnen', 'folder_open', 'logs'),
-              makeActionButton('Check for Updates', 'system_update_alt', 'checkUpdates'),
-              makeActionButton('Update', 'download', 'update')
-            );
-          };
-          const wireWindowControls = () => {
-            const icons = Array.from(document.querySelectorAll('.ms,.material-symbols-rounded'));
-            for (const icon of icons) {
-              const label = textOf(icon).toLowerCase();
-              const action = label === 'remove' ? 'minimize' : label === 'crop_square' ? 'maximize' : label === 'close' ? 'close' : '';
-              if (!action) continue;
-              const rect = icon.getBoundingClientRect();
-              if (rect.top > 44 || rect.right < window.innerWidth - 170) continue;
-              const target = icon.closest('button') || icon.parentElement;
-              if (!target || target.dataset.agentWindowAction === action) continue;
-              target.dataset.agentWindowAction = action;
-              target.style.cursor = 'pointer';
-              target.addEventListener('click', (event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                send({ type: 'window', action });
-              });
-            }
-          };
-          const wire = () => {
-            ensureExtraActions();
-            wireWindowControls();
-            document.querySelectorAll('button').forEach((button) => {
-              if (button.dataset.agentBridge) return;
-              const label = textOf(button);
-              const rect = button.getBoundingClientRect();
-              button.dataset.agentBridge = '1';
-              if (label.includes('Testlauf')) button.addEventListener('click', () => send({ type: 'action', name: 'test' }));
-              if (label === 'Speichern') button.addEventListener('click', () => send({ type: 'action', name: 'save' }));
-              if (label.includes('Konfiguration öffnen')) button.addEventListener('click', () => send({ type: 'action', name: 'config' }));
-              if (label.includes('Logordner öffnen')) button.addEventListener('click', () => send({ type: 'action', name: 'logs' }));
-              if (label.includes('Check for Updates')) button.addEventListener('click', () => send({ type: 'action', name: 'checkUpdates' }));
-              if (label === 'Update') button.addEventListener('click', () => send({ type: 'action', name: 'update' }));
-              if (label.includes('Monitoring aktiv') || label.includes('Monitoring pausiert')) {
-                button.addEventListener('click', () => send({ type: 'action', name: 'toggleMonitoring' }));
-              }
-              if (rect.top < 44 && rect.right > window.innerWidth - 170) {
-                const normalized = label.toLowerCase();
-                if (normalized === '-' || normalized === '−' || normalized.includes('min')) {
-                  button.addEventListener('click', () => send({ type: 'window', action: 'minimize' }));
-                } else if (normalized === '□' || normalized === '▢' || normalized.includes('max')) {
-                  button.addEventListener('click', () => send({ type: 'window', action: 'maximize' }));
-                } else if (normalized === '×' || normalized === 'x' || normalized.includes('close')) {
-                  button.addEventListener('click', () => send({ type: 'window', action: 'close' }));
-                }
-              }
-            });
-          };
-          document.addEventListener('mousedown', (event) => {
-            if (event.button !== 0 || event.clientY > 44 || event.target.closest('button,input,select,textarea')) return;
-            send({ type: 'window', action: 'drag' });
-          }, true);
-          const replaceText = (from, to) => {
-            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-            const nodes = [];
-            while (walker.nextNode()) nodes.push(walker.currentNode);
-            for (const node of nodes) {
-              if (node.nodeValue && node.nodeValue.includes(from)) node.nodeValue = node.nodeValue.split(from).join(to);
-            }
-          };
-          const setTextByLabel = (label, value) => {
-            const elements = Array.from(document.querySelectorAll('*')).filter((element) => textOf(element) === label);
-            for (const element of elements) {
-              const card = element.closest('div');
-              if (!card) continue;
-              const candidates = Array.from(card.querySelectorAll('div,span,strong')).filter((candidate) => /^\d+(\s?ms|%)?$|^-$/.test(textOf(candidate)));
-              if (candidates.length) {
-                candidates[0].textContent = value;
-                return;
-              }
-            }
-          };
-          window.__uptimeAgentSync = (data) => {
-            wire();
-            replaceText('v1.0.3', 'v' + data.version);
-            replaceText('PROXESS', data.machineName || 'PROXESS');
-            setTextByLabel('Monitore', String(data.total));
-            setTextByLabel('Erreichbar', String(data.up));
-            setTextByLabel('Ausfälle', String(data.down));
-            setTextByLabel('Ø Antwort', data.avgResponse);
-          };
-          setInterval(wire, 500);
-          wire();
-        })();
-        """;
-        await _dashboardWebView.CoreWebView2.ExecuteScriptAsync(script);
-    }
-
     private async Task SyncDashboardAsync()
     {
         if (!_dashboardReady || _dashboardWebView.CoreWebView2 is null)
@@ -390,22 +268,253 @@ public partial class MainForm : Form
             return;
         }
 
-        var statuses = _monitoring.GetStatuses().Where(status => status.Enabled).ToList();
-        var responses = statuses.Where(status => status.LastResponseMs.HasValue).Select(status => status.LastResponseMs!.Value).ToList();
+        var statuses = _monitoring.GetStatuses();
+        var lookup = new Dictionary<string, CheckRuntimeStatus>(StringComparer.OrdinalIgnoreCase);
+        foreach (var status in statuses)
+        {
+            lookup[MonitorKey(status.Type, status.Id)] = status;
+        }
+
+        var monitors = new List<object>();
+        foreach (var check in _config.PingChecks)
+        {
+            var status = ResolveStatus(lookup, CheckType.Ping, check.Id);
+            monitors.Add(new
+            {
+                id = check.Id,
+                type = "ping",
+                enabled = check.Enabled,
+                name = check.Name,
+                target = check.Host,
+                state = MonitorStateText(check.Enabled, status),
+                responseMs = status?.LastResponseMs,
+                lastRun = TimeFormatter.FormatDate(status?.LastRun),
+                nextRun = TimeFormatter.FormatDate(status?.NextRun),
+                lastError = status?.LastError ?? "",
+                intervalSeconds = check.IntervalSeconds,
+                timeoutMs = check.TimeoutMs,
+                pushUrl = check.PushUrl,
+                note = check.Note,
+                sendMachineInfo = check.SendMachineInfo,
+                restartServicesOnFailure = check.RestartServicesOnFailure,
+                restartServicesCooldownSeconds = check.RestartServicesCooldownSeconds,
+                host = check.Host
+            });
+        }
+
+        foreach (var check in _config.TcpChecks)
+        {
+            var status = ResolveStatus(lookup, CheckType.Tcp, check.Id);
+            monitors.Add(new
+            {
+                id = check.Id,
+                type = "tcp",
+                enabled = check.Enabled,
+                name = check.Name,
+                target = $"{check.Host}:{check.Port}",
+                state = MonitorStateText(check.Enabled, status),
+                responseMs = status?.LastResponseMs,
+                lastRun = TimeFormatter.FormatDate(status?.LastRun),
+                nextRun = TimeFormatter.FormatDate(status?.NextRun),
+                lastError = status?.LastError ?? "",
+                intervalSeconds = check.IntervalSeconds,
+                timeoutMs = check.TimeoutMs,
+                pushUrl = check.PushUrl,
+                note = check.Note,
+                sendMachineInfo = check.SendMachineInfo,
+                restartServicesOnFailure = check.RestartServicesOnFailure,
+                restartServicesCooldownSeconds = check.RestartServicesCooldownSeconds,
+                host = check.Host,
+                port = check.Port
+            });
+        }
+
+        foreach (var check in _config.ServiceChecks)
+        {
+            var status = ResolveStatus(lookup, CheckType.Service, check.Id);
+            monitors.Add(new
+            {
+                id = check.Id,
+                type = "service",
+                enabled = check.Enabled,
+                name = check.DisplayName,
+                target = check.ServiceName,
+                state = MonitorStateText(check.Enabled, status),
+                responseMs = status?.LastResponseMs,
+                lastRun = TimeFormatter.FormatDate(status?.LastRun),
+                nextRun = TimeFormatter.FormatDate(status?.NextRun),
+                lastError = status?.LastError ?? "",
+                intervalSeconds = check.IntervalSeconds,
+                pushUrl = check.PushUrl,
+                note = check.Note,
+                sendMachineInfo = check.SendMachineInfo,
+                restartServicesOnFailure = check.RestartServicesOnFailure,
+                restartServicesCooldownSeconds = check.RestartServicesCooldownSeconds,
+                serviceName = check.ServiceName,
+                expectedStatus = check.ExpectedStatus,
+                restartIfStopped = check.RestartIfStopped
+            });
+        }
+
+        foreach (var check in _config.DriveChecks)
+        {
+            var status = ResolveStatus(lookup, CheckType.Drive, check.Id);
+            monitors.Add(new
+            {
+                id = check.Id,
+                type = "drive",
+                enabled = check.Enabled,
+                name = check.Name,
+                target = check.Path,
+                state = MonitorStateText(check.Enabled, status),
+                responseMs = status?.LastResponseMs,
+                lastRun = TimeFormatter.FormatDate(status?.LastRun),
+                nextRun = TimeFormatter.FormatDate(status?.NextRun),
+                lastError = status?.LastError ?? "",
+                intervalSeconds = check.IntervalSeconds,
+                pushUrl = check.PushUrl,
+                note = check.Note,
+                sendMachineInfo = check.SendMachineInfo,
+                path = check.Path,
+                minimumFreePercent = check.MinimumFreePercent,
+                minimumFreeGb = check.MinimumFreeGb,
+                reconnectIfUnavailable = check.ReconnectIfUnavailable
+            });
+        }
+
+        var enabled = statuses.Where(status => status.Enabled).ToList();
+        var responses = enabled.Where(status => status.LastResponseMs.HasValue).Select(status => status.LastResponseMs!.Value).ToList();
+        var upCount = enabled.Count(status => status.State == AgentCheckState.Up);
+        var downCount = enabled.Count(status => status.State == AgentCheckState.Down);
+        var failed = enabled.FirstOrDefault(status => status.State == AgentCheckState.Down);
+        var maxResp = responses.Count == 0 ? 1 : Math.Max(1L, responses.Max());
+        var spark = responses
+            .TakeLast(24)
+            .Select(value => Math.Max(8, (int)Math.Round(value * 100.0 / maxResp)))
+            .ToList();
+
         var payload = new
         {
             version = AppVersion.Current,
             machineName = Environment.MachineName,
-            monitoring = IsMonitoringActive(),
-            total = statuses.Count,
-            up = statuses.Count(status => status.State == AgentCheckState.Up),
-            down = statuses.Count(status => status.State == AgentCheckState.Down),
-            warn = statuses.Count(status => status.State == AgentCheckState.Warning),
-            avgResponse = responses.Count == 0 ? "-" : (long)Math.Round(responses.Average()) + " ms",
-            lastRun = TimeFormatter.FormatDate(_monitoring.LastRun)
+            monitoringActive = IsMonitoringActive(),
+            theme = string.Equals(_config.Global.Theme, "Dark", StringComparison.OrdinalIgnoreCase) ? "dark" : "light",
+            maximized = WindowState == FormWindowState.Maximized,
+            lastRun = TimeFormatter.FormatDate(_monitoring.LastRun),
+            lastError = failed?.LastError is { Length: > 0 } error ? error : _monitoring.LastError,
+            lastErrorName = failed?.Name ?? "",
+            lastErrorTime = TimeFormatter.FormatDate(failed?.LastRun),
+            defaults = new
+            {
+                intervalSeconds = _config.Global.DefaultIntervalSeconds,
+                httpTimeoutMs = _config.Global.HttpTimeoutMs,
+                tcpTimeoutMs = _config.Global.TcpTimeoutMs,
+                pingTimeoutMs = _config.Global.PingTimeoutMs
+            },
+            kpi = new
+            {
+                total = enabled.Count,
+                up = upCount,
+                down = downCount,
+                warn = enabled.Count(status => status.State == AgentCheckState.Warning),
+                avg = responses.Count == 0 ? "-" : (long)Math.Round(responses.Average()) + " ms",
+                uptime = enabled.Count == 0 ? "0%" : (int)Math.Round(upCount * 100.0 / enabled.Count) + "%"
+            },
+            spark,
+            settings = new
+            {
+                defaultIntervalSeconds = _config.Global.DefaultIntervalSeconds,
+                httpTimeoutMs = _config.Global.HttpTimeoutMs,
+                tcpTimeoutMs = _config.Global.TcpTimeoutMs,
+                pingTimeoutMs = _config.Global.PingTimeoutMs,
+                logLevel = LogLevelKinds.Normalize(_config.Global.LogLevel),
+                theme = _config.Global.Theme,
+                language = _config.Global.Language,
+                maskPushUrls = _config.Global.MaskPushUrls,
+                autostart = _config.Global.Autostart,
+                startMinimized = _config.Global.StartMinimized,
+                minimizeToTrayOnClose = _config.Global.MinimizeToTrayOnClose,
+                sendMachineInfo = _config.Global.SendMachineInfo,
+                monitoringAutoStart = _config.Global.MonitoringAutoStart
+            },
+            watchdog = new
+            {
+                enabled = _config.Watchdog.Enabled,
+                pushUrl = _config.Watchdog.PushUrl,
+                intervalSeconds = _config.Watchdog.IntervalSeconds,
+                maxSecondsWithoutSuccessfulCheck = _config.Watchdog.MaxSecondsWithoutSuccessfulCheck,
+                sendMachineInfo = _config.Watchdog.SendMachineInfo
+            },
+            logs = ReadDashboardLogs(),
+            monitors
         };
+
         var json = JsonSerializer.Serialize(payload);
-        await _dashboardWebView.CoreWebView2.ExecuteScriptAsync($"window.__uptimeAgentSync && window.__uptimeAgentSync({json});");
+        await _dashboardWebView.CoreWebView2.ExecuteScriptAsync($"window.agent && window.agent.applyState({json});");
+    }
+
+    private List<object> ReadDashboardLogs()
+    {
+        var logs = new List<object>();
+        try
+        {
+            var text = _logger.ReadRecentLines(80);
+            var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var raw in lines.Reverse())
+            {
+                var line = raw.TrimEnd('\r');
+                if (line.Length < 21)
+                {
+                    continue;
+                }
+
+                var time = line.Length >= 19 ? line.Substring(11, 8) : "";
+                var level = "INFO";
+                var message = line;
+                var open = line.IndexOf('[');
+                var close = line.IndexOf(']');
+                if (open >= 0 && close > open)
+                {
+                    level = line.Substring(open + 1, close - open - 1).ToUpperInvariant();
+                    message = line[(close + 1)..].Trim();
+                }
+
+                logs.Add(new { time, level, msg = message });
+            }
+        }
+        catch
+        {
+            // Logfile may be locked or rolling over; an empty log view is acceptable.
+        }
+
+        return logs;
+    }
+
+    private static string MonitorKey(CheckType type, string id)
+    {
+        return (int)type + "|" + (id ?? string.Empty);
+    }
+
+    private static CheckRuntimeStatus? ResolveStatus(IReadOnlyDictionary<string, CheckRuntimeStatus> lookup, CheckType type, string id)
+    {
+        return lookup.TryGetValue(MonitorKey(type, id), out var status) ? status : null;
+    }
+
+    private static string MonitorStateText(bool enabled, CheckRuntimeStatus? status)
+    {
+        if (!enabled)
+        {
+            return "disabled";
+        }
+
+        return status?.State switch
+        {
+            AgentCheckState.Up => "up",
+            AgentCheckState.Down => "down",
+            AgentCheckState.Warning => "warning",
+            AgentCheckState.Disabled => "disabled",
+            _ => "unknown"
+        };
     }
 
     private async Task HandleDashboardMessageAsync(string messageJson)
@@ -415,17 +524,17 @@ public partial class MainForm : Form
             using var document = JsonDocument.Parse(messageJson);
             var root = document.RootElement;
             var type = root.TryGetProperty("type", out var typeElement) ? typeElement.GetString() : "";
+
             if (string.Equals(type, "window", StringComparison.OrdinalIgnoreCase))
             {
-                var action = root.TryGetProperty("action", out var actionElement) ? actionElement.GetString() : "";
-                HandleDashboardWindowAction(action);
+                HandleDashboardWindowAction(root);
                 return;
             }
 
-            if (string.Equals(type, "action", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(type, "command", StringComparison.OrdinalIgnoreCase))
             {
                 var name = root.TryGetProperty("name", out var nameElement) ? nameElement.GetString() : "";
-                await HandleDashboardActionAsync(name);
+                await HandleDashboardCommandAsync(name, root);
             }
         }
         catch (Exception ex)
@@ -434,15 +543,16 @@ public partial class MainForm : Form
         }
     }
 
-    private void HandleDashboardWindowAction(string? action)
+    private void HandleDashboardWindowAction(JsonElement root)
     {
+        var action = root.TryGetProperty("action", out var actionElement) ? actionElement.GetString() : "";
         switch (action?.Trim().ToLowerInvariant())
         {
             case "minimize":
                 WindowState = FormWindowState.Minimized;
                 break;
             case "maximize":
-                WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized;
+                ToggleMaximize();
                 break;
             case "close":
                 Close();
@@ -450,30 +560,19 @@ public partial class MainForm : Form
             case "drag":
                 BeginNativeWindowDrag();
                 break;
+            case "resize":
+                var edge = root.TryGetProperty("edge", out var edgeElement) ? edgeElement.GetString() : "";
+                BeginNativeResize(edge);
+                break;
         }
     }
 
-    private async Task HandleDashboardActionAsync(string? name)
+    private async Task HandleDashboardCommandAsync(string? name, JsonElement root)
     {
         switch (name?.Trim())
         {
-            case "test":
-                await TestAllChecksAsync();
-                break;
-            case "save":
-                SaveConfig(showMessage: true);
-                break;
-            case "config":
-                OpenConfigFile();
-                break;
-            case "logs":
-                OpenLogsFolder();
-                break;
-            case "checkUpdates":
-                await CheckForUpdatesAsync();
-                break;
-            case "update":
-                await InstallUpdateAsync();
+            case "ready":
+                await SyncDashboardAsync();
                 break;
             case "toggleMonitoring":
                 if (IsMonitoringActive())
@@ -484,8 +583,352 @@ public partial class MainForm : Form
                 {
                     StartMonitoring();
                 }
+                await SyncDashboardAsync();
+                break;
+            case "testAll":
+                await TestAllChecksAsync();
+                await SyncDashboardAsync();
+                break;
+            case "openConfig":
+                OpenConfigFile();
+                break;
+            case "openLogs":
+                OpenLogsFolder();
+                break;
+            case "checkUpdates":
+                await CheckForUpdatesAsync();
+                if (_availableUpdate?.Asset is not null)
+                {
+                    await InstallUpdateAsync();
+                }
+                break;
+            case "setTheme":
+                ApplyDashboardTheme(root);
+                break;
+            case "testMonitor":
+                await TestMonitorFromDashboardAsync(GetText(root, "id"));
+                await SyncDashboardAsync();
+                break;
+            case "toggleMonitor":
+                ToggleMonitorEnabled(GetText(root, "id"));
+                await SyncDashboardAsync();
+                break;
+            case "deleteMonitor":
+                DeleteMonitorFromDashboard(GetText(root, "id"));
+                await SyncDashboardAsync();
+                break;
+            case "saveMonitor":
+                SaveMonitorFromDashboard(root);
+                await SyncDashboardAsync();
+                break;
+            case "saveSettings":
+                SaveSettingsFromDashboard(root);
+                await SyncDashboardAsync();
                 break;
         }
+    }
+
+    private void SaveSettingsFromDashboard(JsonElement root)
+    {
+        if (root.TryGetProperty("settings", out var settings) && settings.ValueKind == JsonValueKind.Object)
+        {
+            _numDefaultInterval.Value = ClampToControl(_numDefaultInterval, GetInt(settings, "defaultIntervalSeconds", _config.Global.DefaultIntervalSeconds));
+            _numHttpTimeout.Value = ClampToControl(_numHttpTimeout, GetInt(settings, "httpTimeoutMs", _config.Global.HttpTimeoutMs));
+            _numTcpTimeout.Value = ClampToControl(_numTcpTimeout, GetInt(settings, "tcpTimeoutMs", _config.Global.TcpTimeoutMs));
+            _numPingTimeout.Value = ClampToControl(_numPingTimeout, GetInt(settings, "pingTimeoutMs", _config.Global.PingTimeoutMs));
+            SelectComboValue(_cmbLogLevel, LogLevelKinds.Normalize(GetText(settings, "logLevel")));
+            SelectLanguageOption(AppLanguages.Normalize(GetText(settings, "language")));
+            _chkMaskPushUrls.Checked = GetBool(settings, "maskPushUrls", _config.Global.MaskPushUrls);
+            _chkAutostart.Checked = GetBool(settings, "autostart", _config.Global.Autostart);
+            _chkStartMinimized.Checked = GetBool(settings, "startMinimized", _config.Global.StartMinimized);
+            _chkMinimizeToTray.Checked = GetBool(settings, "minimizeToTrayOnClose", _config.Global.MinimizeToTrayOnClose);
+            _chkSendMachineInfo.Checked = GetBool(settings, "sendMachineInfo", _config.Global.SendMachineInfo);
+            _chkMonitoringAutoStart.Checked = GetBool(settings, "monitoringAutoStart", _config.Global.MonitoringAutoStart);
+        }
+
+        if (root.TryGetProperty("watchdog", out var watchdog) && watchdog.ValueKind == JsonValueKind.Object)
+        {
+            _chkWatchdogEnabled.Checked = GetBool(watchdog, "enabled", _config.Watchdog.Enabled);
+            _txtWatchdogPushUrl.Text = GetText(watchdog, "pushUrl");
+            _numWatchdogInterval.Value = ClampToControl(_numWatchdogInterval, GetInt(watchdog, "intervalSeconds", _config.Watchdog.IntervalSeconds));
+            _numWatchdogMax.Value = ClampToControl(_numWatchdogMax, GetInt(watchdog, "maxSecondsWithoutSuccessfulCheck", _config.Watchdog.MaxSecondsWithoutSuccessfulCheck));
+            _chkWatchdogMachineInfo.Checked = GetBool(watchdog, "sendMachineInfo", _config.Watchdog.SendMachineInfo);
+        }
+
+        SaveConfig(showMessage: false);
+        _theme = ThemeModes.PaletteFor(_config.Global.Theme);
+        ApplyTheme();
+    }
+
+    private static decimal ClampToControl(NumericUpDown control, int value)
+    {
+        return Math.Clamp(value, (int)control.Minimum, (int)control.Maximum);
+    }
+
+    private void ApplyDashboardTheme(JsonElement root)
+    {
+        var theme = GetText(root, "theme");
+        var normalized = string.Equals(theme, "dark", StringComparison.OrdinalIgnoreCase) ? "Dark" : "Light";
+        SelectComboValue(_cmbTheme, normalized);
+        _config.Global.Theme = normalized;
+        _theme = ThemeModes.PaletteFor(normalized);
+        ApplyTheme();
+        SaveConfig(showMessage: false);
+    }
+
+    private async Task TestMonitorFromDashboardAsync(string id)
+    {
+        var type = FindMonitorType(id);
+        if (type is null)
+        {
+            return;
+        }
+
+        await TestSingleAsync(type.Value, id);
+    }
+
+    private void ToggleMonitorEnabled(string id)
+    {
+        var ping = _config.PingChecks.FirstOrDefault(check => check.Id == id);
+        if (ping is not null) { ping.Enabled = !ping.Enabled; PersistCheckChanges(); return; }
+        var tcp = _config.TcpChecks.FirstOrDefault(check => check.Id == id);
+        if (tcp is not null) { tcp.Enabled = !tcp.Enabled; PersistCheckChanges(); return; }
+        var service = _config.ServiceChecks.FirstOrDefault(check => check.Id == id);
+        if (service is not null) { service.Enabled = !service.Enabled; PersistCheckChanges(); return; }
+        var drive = _config.DriveChecks.FirstOrDefault(check => check.Id == id);
+        if (drive is not null) { drive.Enabled = !drive.Enabled; PersistCheckChanges(); }
+    }
+
+    private void DeleteMonitorFromDashboard(string id)
+    {
+        var name = FindMonitorName(id);
+        if (name is null || !ConfirmDelete(name))
+        {
+            return;
+        }
+
+        _config.PingChecks.RemoveAll(check => check.Id == id);
+        _config.TcpChecks.RemoveAll(check => check.Id == id);
+        _config.ServiceChecks.RemoveAll(check => check.Id == id);
+        _config.DriveChecks.RemoveAll(check => check.Id == id);
+        PersistCheckChanges();
+    }
+
+    private void SaveMonitorFromDashboard(JsonElement root)
+    {
+        if (!root.TryGetProperty("monitor", out var monitor) || monitor.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        var type = GetText(monitor, "type");
+        var id = GetText(monitor, "id");
+        switch (type)
+        {
+            case "ping":
+                SavePingFromDashboard(monitor, id);
+                break;
+            case "tcp":
+                SaveTcpFromDashboard(monitor, id);
+                break;
+            case "service":
+                SaveServiceFromDashboard(monitor, id);
+                break;
+            case "drive":
+                SaveDriveFromDashboard(monitor, id);
+                break;
+            default:
+                return;
+        }
+
+        PersistCheckChanges();
+    }
+
+    private void SavePingFromDashboard(JsonElement monitor, string id)
+    {
+        var existing = string.IsNullOrEmpty(id) ? null : _config.PingChecks.FirstOrDefault(check => check.Id == id);
+        var target = existing?.Clone() ?? new PingCheckConfig();
+        target.Enabled = GetBool(monitor, "enabled", true);
+        target.Name = GetText(monitor, "name");
+        target.Host = GetText(monitor, "host");
+        target.IntervalSeconds = GetInt(monitor, "intervalSeconds", _config.Global.DefaultIntervalSeconds);
+        target.TimeoutMs = GetInt(monitor, "timeoutMs", _config.Global.PingTimeoutMs);
+        target.PushUrl = GetText(monitor, "pushUrl");
+        target.Note = GetText(monitor, "note");
+        target.SendMachineInfo = GetBool(monitor, "sendMachineInfo", true);
+        ApplyRestartServices(monitor, names => target.RestartServicesOnFailure = names, seconds => target.RestartServicesCooldownSeconds = seconds, target.RestartServicesCooldownSeconds);
+        if (existing is null) { _config.PingChecks.Add(target); } else { ReplaceById(_config.PingChecks, id, target); }
+    }
+
+    private void SaveTcpFromDashboard(JsonElement monitor, string id)
+    {
+        var existing = string.IsNullOrEmpty(id) ? null : _config.TcpChecks.FirstOrDefault(check => check.Id == id);
+        var target = existing?.Clone() ?? new TcpCheckConfig();
+        target.Enabled = GetBool(monitor, "enabled", true);
+        target.Name = GetText(monitor, "name");
+        target.Host = GetText(monitor, "host");
+        target.Port = GetInt(monitor, "port", 443);
+        target.IntervalSeconds = GetInt(monitor, "intervalSeconds", _config.Global.DefaultIntervalSeconds);
+        target.TimeoutMs = GetInt(monitor, "timeoutMs", _config.Global.TcpTimeoutMs);
+        target.PushUrl = GetText(monitor, "pushUrl");
+        target.Note = GetText(monitor, "note");
+        target.SendMachineInfo = GetBool(monitor, "sendMachineInfo", true);
+        ApplyRestartServices(monitor, names => target.RestartServicesOnFailure = names, seconds => target.RestartServicesCooldownSeconds = seconds, target.RestartServicesCooldownSeconds);
+        if (existing is null) { _config.TcpChecks.Add(target); } else { ReplaceById(_config.TcpChecks, id, target); }
+    }
+
+    private void SaveServiceFromDashboard(JsonElement monitor, string id)
+    {
+        var existing = string.IsNullOrEmpty(id) ? null : _config.ServiceChecks.FirstOrDefault(check => check.Id == id);
+        var target = existing?.Clone() ?? new ServiceCheckConfig();
+        target.Enabled = GetBool(monitor, "enabled", true);
+        target.DisplayName = GetText(monitor, "name");
+        target.ServiceName = GetText(monitor, "serviceName");
+        target.ExpectedStatus = ServiceStates.Normalize(GetText(monitor, "expectedStatus"));
+        target.RestartIfStopped = GetBool(monitor, "restartIfStopped", false);
+        target.IntervalSeconds = GetInt(monitor, "intervalSeconds", _config.Global.DefaultIntervalSeconds);
+        target.PushUrl = GetText(monitor, "pushUrl");
+        target.Note = GetText(monitor, "note");
+        target.SendMachineInfo = GetBool(monitor, "sendMachineInfo", true);
+        ApplyRestartServices(monitor, names => target.RestartServicesOnFailure = names, seconds => target.RestartServicesCooldownSeconds = seconds, target.RestartServicesCooldownSeconds);
+        if (existing is null) { _config.ServiceChecks.Add(target); } else { ReplaceById(_config.ServiceChecks, id, target); }
+    }
+
+    private void SaveDriveFromDashboard(JsonElement monitor, string id)
+    {
+        var existing = string.IsNullOrEmpty(id) ? null : _config.DriveChecks.FirstOrDefault(check => check.Id == id);
+        var target = existing?.Clone() ?? new DriveCheckConfig();
+        target.Enabled = GetBool(monitor, "enabled", true);
+        target.Name = GetText(monitor, "name");
+        target.Path = GetText(monitor, "path");
+        target.IntervalSeconds = GetInt(monitor, "intervalSeconds", Math.Max(60, _config.Global.DefaultIntervalSeconds));
+        target.MinimumFreePercent = GetInt(monitor, "minimumFreePercent", 10);
+        target.MinimumFreeGb = GetDecimal(monitor, "minimumFreeGb", 0);
+        target.ReconnectIfUnavailable = GetBool(monitor, "reconnectIfUnavailable", false);
+        target.PushUrl = GetText(monitor, "pushUrl");
+        target.Note = GetText(monitor, "note");
+        target.SendMachineInfo = GetBool(monitor, "sendMachineInfo", true);
+        if (existing is null) { _config.DriveChecks.Add(target); } else { ReplaceById(_config.DriveChecks, id, target); }
+    }
+
+    private static void ApplyRestartServices(JsonElement monitor, Action<List<string>> setNames, Action<int> setCooldown, int currentCooldown)
+    {
+        if (monitor.TryGetProperty("restartServicesOnFailure", out var value) && value.ValueKind == JsonValueKind.Array)
+        {
+            var names = value.EnumerateArray()
+                .Where(item => item.ValueKind == JsonValueKind.String)
+                .Select(item => item.GetString() ?? "")
+                .ToList();
+            setNames(CheckServiceActions.NormalizeServiceNames(names));
+        }
+
+        setCooldown(GetInt(monitor, "restartServicesCooldownSeconds", currentCooldown <= 0 ? 300 : currentCooldown));
+    }
+
+    private CheckType? FindMonitorType(string id)
+    {
+        if (_config.PingChecks.Any(check => check.Id == id)) return CheckType.Ping;
+        if (_config.TcpChecks.Any(check => check.Id == id)) return CheckType.Tcp;
+        if (_config.ServiceChecks.Any(check => check.Id == id)) return CheckType.Service;
+        if (_config.DriveChecks.Any(check => check.Id == id)) return CheckType.Drive;
+        return null;
+    }
+
+    private string? FindMonitorName(string id)
+    {
+        var ping = _config.PingChecks.FirstOrDefault(check => check.Id == id);
+        if (ping is not null) return ping.Name;
+        var tcp = _config.TcpChecks.FirstOrDefault(check => check.Id == id);
+        if (tcp is not null) return tcp.Name;
+        var service = _config.ServiceChecks.FirstOrDefault(check => check.Id == id);
+        if (service is not null) return service.DisplayName;
+        var drive = _config.DriveChecks.FirstOrDefault(check => check.Id == id);
+        return drive?.Name;
+    }
+
+    private static string GetText(JsonElement element, string property)
+    {
+        if (element.ValueKind == JsonValueKind.Object && element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String)
+        {
+            return value.GetString()?.Trim() ?? string.Empty;
+        }
+
+        return string.Empty;
+    }
+
+    private static bool GetBool(JsonElement element, string property, bool fallback)
+    {
+        if (element.TryGetProperty(property, out var value))
+        {
+            if (value.ValueKind == JsonValueKind.True) return true;
+            if (value.ValueKind == JsonValueKind.False) return false;
+        }
+
+        return fallback;
+    }
+
+    private static int GetInt(JsonElement element, string property, int fallback)
+    {
+        if (element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number))
+        {
+            return number;
+        }
+
+        return fallback;
+    }
+
+    private static decimal GetDecimal(JsonElement element, string property, decimal fallback)
+    {
+        if (element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetDecimal(out var number))
+        {
+            return number;
+        }
+
+        return fallback;
+    }
+
+    private void ToggleMaximize()
+    {
+        if (WindowState == FormWindowState.Maximized)
+        {
+            WindowState = FormWindowState.Normal;
+        }
+        else
+        {
+            MaximizedBounds = Screen.FromHandle(Handle).WorkingArea;
+            WindowState = FormWindowState.Maximized;
+        }
+
+        _ = SyncDashboardAsync();
+    }
+
+    private void BeginNativeResize(string? edge)
+    {
+        if (WindowState == FormWindowState.Maximized)
+        {
+            return;
+        }
+
+        var hit = edge?.Trim().ToLowerInvariant() switch
+        {
+            "left" => 0xA,
+            "right" => 0xB,
+            "top" => 0xC,
+            "topleft" => 0xD,
+            "topright" => 0xE,
+            "bottom" => 0xF,
+            "bottomleft" => 0x10,
+            "bottomright" => 0x11,
+            _ => 0
+        };
+
+        if (hit == 0)
+        {
+            return;
+        }
+
+        ReleaseCapture();
+        SendMessage(Handle, 0xA1, hit, 0);
     }
 
     private void BeginNativeWindowDrag()

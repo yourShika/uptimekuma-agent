@@ -19,7 +19,7 @@ public sealed class ConfigServiceTests
         service.Save(config);
         var loaded = service.LoadOrThrow(createIfMissing: false);
 
-        Assert.Equal("1.0.10", loaded.Version);
+        Assert.Equal(AppVersion.Current, loaded.Version);
         Assert.Equal(1440, loaded.PingChecks[0].RestartServicesDelayAfterBootMinutes);
         Assert.Equal(0, loaded.PingChecks[0].RestartServicesDelayAfterFailureMinutes);
     }
