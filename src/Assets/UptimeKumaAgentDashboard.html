@@ -361,6 +361,16 @@ function field(id,label,val,opts){opts=opts||{};
   if(opts.area)return `<label class="fld"${types}><span>${label}</span><textarea id="${id}" placeholder="${opts.ph||""}">${E(val||"")}</textarea></label>`;
   return `<label class="fld${opts.mono?' mono':''}"${types}><span>${label}</span><input id="${id}" type="${opts.num?'number':'text'}" value="${E(val==null?'':val)}" placeholder="${opts.ph||''}"></label>`;
 }
+function fillServicePicker(){
+  const sel=document.getElementById("m_svcpick");
+  if(!sel)return;
+  if(!svcCache){sel.innerHTML='<option value="">— Installierte Dienste werden geladen… —</option>';return;}
+  const inp=document.getElementById("m_serviceName");
+  const cur=inp?inp.value:"";
+  sel.innerHTML='<option value="">— Aus installierter Dienstliste wählen —</option>'+
+    svcCache.map(s=>`<option value="${E(s.serviceName)}"${String(s.serviceName)===String(cur)?" selected":""}>${E(s.displayName||s.serviceName)} (${E(s.serviceName)})${s.status?" · "+E(s.status):""}</option>`).join("");
+  sel.onchange=()=>{const i=document.getElementById("m_serviceName");if(i&&sel.value)i.value=sel.value;};
+}
 function openModal(m){
   const edit=!!m,t=edit?m.type:"ping";m=m||{};
   const html=`<div class="modal"><div class="mh"><div style="display:flex;align-items:center;gap:10px">${ic(edit?"edit":"add",20,"color:var(--accent-ink)")}<h2 style="margin:0;font-size:16px;font-weight:700">${edit?"Monitor bearbeiten":"Monitor hinzufügen"}</h2></div><button class="winbtn" id="mClose">${ic("close",18)}</button></div>
@@ -371,7 +381,7 @@ function openModal(m){
     ${field("m_name","Name",m.name,{ph:"Anzeigename"})}
     ${field("m_host","Host / IP",m.host,{types:"ping tcp",mono:1,ph:"z. B. 192.168.1.1"})}
     ${field("m_port","Port",m.port||443,{types:"tcp",num:1,mono:1})}
-    ${field("m_serviceName","Dienstname",m.serviceName,{types:"service",mono:1,ph:"z. B. Spooler"})}
+    <div data-mf="service"><label class="fld"><span>Dienst aus Liste wählen</span><select id="m_svcpick"><option value="">— Installierte Dienste werden geladen… —</option></select></label>${field("m_serviceName","Dienstname",m.serviceName,{mono:1,ph:"z. B. Spooler"})}</div>
     ${field("m_expectedStatus","Erwarteter Status",m.expectedStatus||"Running",{types:"service",select:["Running","Stopped","Paused","StartPending","StopPending","ContinuePending","PausePending"]})}
     ${field("m_path","Pfad / Laufwerk",m.path,{types:"drive",mono:1,ph:"C:\\ oder \\\\server\\freigabe"})}
     <div data-mf="drive" class="g2">${field("m_minPct","Min. frei (%)",m.minimumFreePercent!=null?m.minimumFreePercent:10,{num:1,mono:1})}${field("m_minGb","Min. frei (GB)",m.minimumFreeGb!=null?m.minimumFreeGb:0,{num:1,mono:1})}</div>
@@ -389,7 +399,7 @@ function openModal(m){
   </div>
   <div class="mf"><button class="btns" id="mCancel">Abbrechen</button><button class="btnp" id="mSave">${ic("save",18)}Speichern</button></div></div>`;
   const ov=document.createElement("div");ov.className="ov show";ov.id="overlay";ov.innerHTML=html;document.body.appendChild(ov);
-  const syncT=()=>{const tp=(document.getElementById("m_type").value);ov.querySelectorAll("[data-mf]").forEach(el=>{el.classList.toggle("hidden",el.dataset.mf.split(" ").indexOf(tp)===-1);});};
+  const syncT=()=>{const tp=(document.getElementById("m_type").value);ov.querySelectorAll("[data-mf]").forEach(el=>{el.classList.toggle("hidden",el.dataset.mf.split(" ").indexOf(tp)===-1);});if(tp==="service"){fillServicePicker();if(!svcCache)cmd("listServices");}};
   const tsel=document.getElementById("m_type");if(tsel&&tsel.tagName==="SELECT")tsel.onchange=syncT;syncT();
   ov.querySelectorAll(".tgk").forEach(k=>{const lab=k.closest("label");if(!lab)return;const cb=lab.querySelector('input[type=checkbox]');if(!cb)return;lab.style.cursor="pointer";lab.onclick=e=>{e.preventDefault();cb.checked=!cb.checked;k.style.background=cb.checked?"var(--accent)":"var(--border)";k.querySelector("i").style.left=cb.checked?"18px":"2px";};});
   const close=()=>ov.remove();
@@ -440,7 +450,7 @@ window.agent={
     render();
   },
   toast:(m,e)=>toast(m,e?"err":"ok"),
-  services:list=>{svcCache=list;}
+  services:list=>{svcCache=Array.isArray(list)?list:[];if(document.getElementById("m_svcpick"))fillServicePicker();}
 };
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){const o=document.getElementById("overlay");if(o)o.remove();}});
 document.querySelectorAll(".rz").forEach(rz=>rz.addEventListener("mousedown",e=>{if(e.button!==0)return;e.preventDefault();post({type:"window",action:"resize",edge:rz.dataset.edge});}));

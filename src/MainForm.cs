@@ -464,6 +464,36 @@ public partial class MainForm : Form
         await _dashboardWebView.CoreWebView2.ExecuteScriptAsync($"window.agent && window.agent.applyState({json});");
     }
 
+    private async Task SendServicesToDashboardAsync()
+    {
+        if (!_dashboardReady || _dashboardWebView.CoreWebView2 is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var services = await Task.Run(() => _windowsServiceManager.ListServices());
+            var payload = services
+                .OrderBy(service => service.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+                .Select(service => new
+                {
+                    serviceName = service.ServiceName,
+                    displayName = string.IsNullOrWhiteSpace(service.DisplayName) ? service.ServiceName : service.DisplayName,
+                    status = I18n.ServiceStatusName(service.Status),
+                    canStop = service.CanStop
+                })
+                .ToList();
+
+            var json = JsonSerializer.Serialize(payload);
+            await _dashboardWebView.CoreWebView2.ExecuteScriptAsync($"window.agent && window.agent.services({json});");
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Lokale Dienste konnten nicht an das Dashboard gesendet werden", ex);
+        }
+    }
+
     private List<object> ReadDashboardLogs()
     {
         var logs = new List<object>();
@@ -584,6 +614,10 @@ public partial class MainForm : Form
         {
             case "ready":
                 await SyncDashboardAsync();
+                await SendServicesToDashboardAsync();
+                break;
+            case "listServices":
+                await SendServicesToDashboardAsync();
                 break;
             case "toggleMonitoring":
                 if (IsMonitoringActive())
