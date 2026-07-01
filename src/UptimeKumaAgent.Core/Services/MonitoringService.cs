@@ -16,6 +16,10 @@ public sealed class MonitoringService
     private readonly IDriveMonitorService _driveMonitorService;
     private readonly ITcpConnectionMonitor _tcpConnectionMonitor;
     private readonly IPingService _pingService;
+    private readonly RuntimeStatusStore? _statusStore;
+    private readonly string _snapshotSource;
+    private readonly System.Threading.Timer? _persistTimer;
+    private volatile bool _snapshotDirty;
     private readonly object _configLock = new();
     private readonly ConcurrentDictionary<string, CheckRuntimeStatus> _statuses = new();
     private readonly ConcurrentDictionary<string, DateTimeOffset> _nextRuns = new();
@@ -39,7 +43,9 @@ public sealed class MonitoringService
         IServiceManager serviceManager,
         IDriveMonitorService driveMonitorService,
         ITcpConnectionMonitor? tcpConnectionMonitor = null,
-        IPingService? pingService = null)
+        IPingService? pingService = null,
+        RuntimeStatusStore? statusStore = null,
+        string snapshotSource = "")
     {
         _config = config;
         _logger = logger;
@@ -49,7 +55,16 @@ public sealed class MonitoringService
         _driveMonitorService = driveMonitorService;
         _tcpConnectionMonitor = tcpConnectionMonitor ?? new NullTcpConnectionMonitor();
         _pingService = pingService ?? new DefaultPingService();
+        _statusStore = statusStore;
+        _snapshotSource = string.IsNullOrWhiteSpace(snapshotSource) ? "monitoring" : snapshotSource;
         EnsureStatuses(config);
+
+        if (_statusStore is not null)
+        {
+            // Persist the live state on a fixed cadence rather than on every status mutation
+            // (the scheduler touches every check once per second); readers poll ~1.5s.
+            _persistTimer = new System.Threading.Timer(_ => FlushSnapshot(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        }
     }
 
     public event EventHandler? StateChanged;
@@ -99,6 +114,7 @@ public sealed class MonitoringService
         _cancellation?.Cancel();
         _logger.Info("Monitoring gestoppt");
         OnStateChanged();
+        FlushSnapshot();
     }
 
     public IReadOnlyList<CheckRuntimeStatus> GetStatuses()
@@ -280,6 +296,10 @@ public sealed class MonitoringService
                 {
                     status.LastPushAt = pushResult.CompletedAt;
                     status.LastPushHttpStatus = pushResult.HttpStatusCode?.ToString() ?? pushResult.ErrorCategory;
+                    if (pushResult.DurationMs.HasValue)
+                    {
+                        status.LastPushMs = pushResult.DurationMs;
+                    }
                 }
             });
 
@@ -972,12 +992,42 @@ public sealed class MonitoringService
 
     private void OnStateChanged()
     {
+        _snapshotDirty = true;
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnStatusesChanged()
     {
+        _snapshotDirty = true;
         StatusesChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void FlushSnapshot()
+    {
+        if (_statusStore is null || !_snapshotDirty)
+        {
+            return;
+        }
+
+        _snapshotDirty = false;
+        try
+        {
+            _statusStore.Write(new RuntimeStatusSnapshot
+            {
+                UpdatedAt = DateTimeOffset.Now,
+                ProcessId = Environment.ProcessId,
+                Source = _snapshotSource,
+                IsRunning = IsRunning,
+                LastRun = LastRun,
+                LastSuccessfulCheck = LastSuccessfulCheck,
+                LastError = LastError,
+                Statuses = _statuses.Values.Select(status => status.Clone()).ToList()
+            });
+        }
+        catch
+        {
+            // Persisting the snapshot is best-effort; ignore transient IO failures.
+        }
     }
 
     private sealed class ScheduledCheck

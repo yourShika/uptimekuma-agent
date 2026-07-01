@@ -18,6 +18,7 @@ public sealed class ConfigService
         _paths = paths;
     }
 
+    public IAgentPaths Paths => _paths;
     public string ConfigPath => _paths.ConfigPath;
     public string DataDirectory => _paths.DataDirectory;
     public string LogDirectory => _paths.LogDirectory;

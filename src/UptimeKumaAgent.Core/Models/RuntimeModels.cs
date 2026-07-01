@@ -33,6 +33,9 @@ public sealed class CheckRuntimeStatus
     public DateTimeOffset? NextRun { get; set; }
     public DateTimeOffset? LastPushAt { get; set; }
     public string LastPushHttpStatus { get; set; } = "";
+
+    /// <summary>Round-trip time of the last push to Uptime Kuma in milliseconds.</summary>
+    public long? LastPushMs { get; set; }
     public bool IsRunning { get; set; }
     public string LastMessage { get; set; } = "";
 
@@ -68,6 +71,9 @@ public sealed class PushResult
     public string ErrorCategory { get; init; } = "";
     public string Message { get; init; } = "";
     public DateTimeOffset CompletedAt { get; init; } = DateTimeOffset.Now;
+
+    /// <summary>Round-trip time of the HTTP push to Uptime Kuma in milliseconds.</summary>
+    public long? DurationMs { get; init; }
 }
 
 public sealed class ServiceInfo

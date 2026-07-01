@@ -43,6 +43,7 @@ public partial class MainForm : Form
     private Label _sectionSubtitle = null!;
     private Button _btnThemeToggle = null!;
     private WebView2 _dashboardWebView = null!;
+    private RuntimeStatusStore _statusStore = null!;
     private bool _dashboardReady;
     private Label _lblAgentStatus = null!;
     private Label _lblMonitoring = null!;
@@ -99,6 +100,7 @@ public partial class MainForm : Form
         _monitoring = monitoring;
         _autostart = autostart;
         _windowsServiceManager = windowsServiceManager;
+        _statusStore = new RuntimeStatusStore(configService.Paths);
         _updateService = new GitHubUpdateService();
         _updateInstaller = new WindowsUpdateInstaller(_updateService, _logger);
         _startMinimized = startMinimized;
@@ -233,7 +235,13 @@ public partial class MainForm : Form
     {
         try
         {
-            var userData = Path.Combine(_configService.DataDirectory, "WebView2");
+            // The WebView2 user-data folder is exclusively locked by the owning process, so it
+            // must live per user (LocalApplicationData) — otherwise a second signed-in user's
+            // tray would fail to open its dashboard against the shared ProgramData folder.
+            var userData = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                AppPaths.AppFolderName,
+                "WebView2");
             Directory.CreateDirectory(userData);
             var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: userData);
             await _dashboardWebView.EnsureCoreWebView2Async(environment);
@@ -268,7 +276,8 @@ public partial class MainForm : Form
             return;
         }
 
-        var statuses = _monitoring.GetStatuses();
+        var runtime = GetRuntimeView();
+        var statuses = runtime.Statuses;
         var lookup = new Dictionary<string, CheckRuntimeStatus>(StringComparer.OrdinalIgnoreCase);
         foreach (var status in statuses)
         {
@@ -383,14 +392,16 @@ public partial class MainForm : Form
         }
 
         var enabled = statuses.Where(status => status.Enabled).ToList();
-        var responses = enabled.Where(status => status.LastResponseMs.HasValue).Select(status => status.LastResponseMs!.Value).ToList();
+        // "Ø Antwort" / "Antwortzeit-Trend" reflect the round-trip time it takes to push
+        // to Uptime Kuma (LastPushMs), i.e. how fast the agent communicates with Kuma.
+        var pushTimes = enabled.Where(status => status.LastPushMs.HasValue).Select(status => status.LastPushMs!.Value).ToList();
         var upCount = enabled.Count(status => status.State == AgentCheckState.Up);
         var downCount = enabled.Count(status => status.State == AgentCheckState.Down);
         var failed = enabled.FirstOrDefault(status => status.State == AgentCheckState.Down);
-        var maxResp = responses.Count == 0 ? 1 : Math.Max(1L, responses.Max());
-        var spark = responses
+        var maxPush = pushTimes.Count == 0 ? 1 : Math.Max(1L, pushTimes.Max());
+        var spark = pushTimes
             .TakeLast(24)
-            .Select(value => Math.Max(8, (int)Math.Round(value * 100.0 / maxResp)))
+            .Select(value => Math.Max(8, (int)Math.Round(value * 100.0 / maxPush)))
             .ToList();
 
         var payload = new
@@ -400,8 +411,8 @@ public partial class MainForm : Form
             monitoringActive = IsMonitoringActive(),
             theme = string.Equals(_config.Global.Theme, "Dark", StringComparison.OrdinalIgnoreCase) ? "dark" : "light",
             maximized = WindowState == FormWindowState.Maximized,
-            lastRun = TimeFormatter.FormatDate(_monitoring.LastRun),
-            lastError = failed?.LastError is { Length: > 0 } error ? error : _monitoring.LastError,
+            lastRun = TimeFormatter.FormatDate(runtime.LastRun),
+            lastError = failed?.LastError is { Length: > 0 } error ? error : runtime.LastError,
             lastErrorName = failed?.Name ?? "",
             lastErrorTime = TimeFormatter.FormatDate(failed?.LastRun),
             defaults = new
@@ -417,7 +428,7 @@ public partial class MainForm : Form
                 up = upCount,
                 down = downCount,
                 warn = enabled.Count(status => status.State == AgentCheckState.Warning),
-                avg = responses.Count == 0 ? "-" : (long)Math.Round(responses.Average()) + " ms",
+                avg = pushTimes.Count == 0 ? "-" : (long)Math.Round(pushTimes.Average()) + " ms",
                 uptime = enabled.Count == 0 ? "0%" : (int)Math.Round(upCount * 100.0 / enabled.Count) + "%"
             },
             spark,
@@ -1845,6 +1856,34 @@ public partial class MainForm : Form
         return _monitoring.IsRunning || (IsWindowsServiceRunning() && _config.Global.MonitoringAutoStart);
     }
 
+    private sealed record RuntimeView(
+        IReadOnlyList<CheckRuntimeStatus> Statuses,
+        DateTimeOffset? LastRun,
+        string LastError,
+        bool FromService);
+
+    /// <summary>
+    /// Returns the monitoring state that should drive the dashboard. When the background
+    /// Windows service is running it performs the real scheduled checks and pushes, so we
+    /// read its shared snapshot instead of this GUI process's own (idle) monitoring instance.
+    /// Only when no service is active do we fall back to the in-process state.
+    /// </summary>
+    private RuntimeView GetRuntimeView()
+    {
+        if (!_monitoring.IsRunning && IsWindowsServiceRunning())
+        {
+            var snapshot = _statusStore.Read();
+            if (snapshot is not null
+                && string.Equals(snapshot.Source, "service", StringComparison.OrdinalIgnoreCase)
+                && DateTimeOffset.Now - snapshot.UpdatedAt < TimeSpan.FromSeconds(30))
+            {
+                return new RuntimeView(snapshot.Statuses, snapshot.LastRun, snapshot.LastError, true);
+            }
+        }
+
+        return new RuntimeView(_monitoring.GetStatuses(), _monitoring.LastRun, _monitoring.LastError, false);
+    }
+
     private AgentTrayState ResolveTrayState()
     {
         if (!IsMonitoringActive())
@@ -1852,7 +1891,7 @@ public partial class MainForm : Form
             return AgentTrayState.Inactive;
         }
 
-        var statuses = _monitoring.GetStatuses();
+        var statuses = GetRuntimeView().Statuses;
         return statuses.Any(status => status.Enabled && status.State is AgentCheckState.Down or AgentCheckState.Warning or AgentCheckState.Unknown)
             ? AgentTrayState.Warning
             : AgentTrayState.Ok;

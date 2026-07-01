@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Net.Security;
@@ -27,6 +28,7 @@ public sealed class KumaPushService
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromMilliseconds(Math.Clamp(timeoutMs, 500, 120000)));
 
+        var stopwatch = Stopwatch.StartNew();
         try
         {
             using var client = new HttpClient
@@ -35,8 +37,10 @@ public sealed class KumaPushService
             };
 
             using var response = await client.GetAsync(pushUri, timeout.Token).ConfigureAwait(false);
+            stopwatch.Stop();
+            var durationMs = Math.Max(1, stopwatch.ElapsedMilliseconds);
             var statusCode = (int)response.StatusCode;
-            _logger.Debug($"Uptime Kuma Push {UrlMasker.MaskPushUrl(pushUrl)} HTTP {statusCode}");
+            _logger.Debug($"Uptime Kuma Push {UrlMasker.MaskPushUrl(pushUrl)} HTTP {statusCode} ({durationMs} ms)");
 
             if (!response.IsSuccessStatusCode)
             {
@@ -45,7 +49,8 @@ public sealed class KumaPushService
                     Success = false,
                     HttpStatusCode = statusCode,
                     ErrorCategory = CategorizeHttpStatus(response.StatusCode),
-                    Message = $"HTTP {statusCode}"
+                    Message = $"HTTP {statusCode}",
+                    DurationMs = durationMs
                 };
             }
 
@@ -53,7 +58,8 @@ public sealed class KumaPushService
             {
                 Success = true,
                 HttpStatusCode = statusCode,
-                Message = $"HTTP {statusCode}"
+                Message = $"HTTP {statusCode}",
+                DurationMs = durationMs
             };
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)

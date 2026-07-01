@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$version = "1.1.0"
+$version = "1.1.1"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $publishCmd = Join-Path $root "Publish.cmd"
 $publishDir = Join-Path $root "build\win-x64"

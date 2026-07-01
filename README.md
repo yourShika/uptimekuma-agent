@@ -45,8 +45,8 @@ Beim ersten MSI-Build installiert das Skript das WiX Toolset automatisch lokal n
 Die fertige Datei liegt danach unter:
 
 ```text
-build\installer\UptimeKumaTrayAgent-Setup-1.1.0-x64.msi
-build\installer\UptimeKumaTrayAgent-Setup-1.1.0-x86.msi
+build\installer\UptimeKumaTrayAgent-Setup-1.1.1-x64.msi
+build\installer\UptimeKumaTrayAgent-Setup-1.1.1-x86.msi
 ```
 
 Der ältere selbstextrahierende EXE-Installer kann weiterhin gebaut werden:
@@ -58,7 +58,7 @@ BuildInstaller.cmd
 Die fertige Datei liegt danach unter:
 
 ```text
-build\installer\UptimeKumaTrayAgent-Setup-1.1.0.exe
+build\installer\UptimeKumaTrayAgent-Setup-1.1.1.exe
 ```
 
 Die Installer können für Neuinstallation und Updates verwendet werden. Bei Updates werden Dienst und Programmdateien aktualisiert, die Konfiguration und Logs unter `%ProgramData%\UptimeKumaTrayAgent` bleiben erhalten. Falls aus Version 1.0.3 noch eine Benutzer-Konfiguration unter `%AppData%\UptimeKumaTrayAgent` vorhanden ist und ProgramData leer ist oder nur eine Factory-Default-Konfiguration enthält, wird diese alte Konfiguration automatisch übernommen. Zusätzlich werden Startmenü-Einträge `UptimeKumaAgent` und `UptimeKumaAgent Konfiguration` angelegt, damit Windows-Suche Agent und Konfigurationsdatei findet.
@@ -89,8 +89,8 @@ Linux wird als headless/systemd-Agent gebaut, ohne WPF, WinForms, X11, Wayland, 
 Das Skript erstellt self-contained Builds und generische Archive:
 
 ```text
-build/uptime-kuma-agent-1.1.0-linux-x64.tar.gz
-build/uptime-kuma-agent-1.1.0-linux-arm64.tar.gz
+build/uptime-kuma-agent-1.1.1-linux-x64.tar.gz
+build/uptime-kuma-agent-1.1.1-linux-arm64.tar.gz
 ```
 
 Optional kann `BuildLinuxPackages.sh` verwendet werden. Es erzeugt die `.tar.gz`-Pakete immer, bereitet `.deb` vor, wenn `dpkg-deb` vorhanden ist, und überspringt `.rpm`, wenn `rpmbuild` fehlt.
@@ -100,8 +100,8 @@ Optional kann `BuildLinuxPackages.sh` verwendet werden. Es erzeugt die `.tar.gz`
 Ubuntu/Debian:
 
 ```bash
-tar -xzf uptime-kuma-agent-1.1.0-linux-x64.tar.gz
-cd uptime-kuma-agent-1.1.0-linux-x64
+tar -xzf uptime-kuma-agent-1.1.1-linux-x64.tar.gz
+cd uptime-kuma-agent-1.1.1-linux-x64
 sudo ./InstallLinux.sh
 ```
 
@@ -165,7 +165,7 @@ Install.cmd
 Oder komfortabel über den Setup-Installer:
 
 ```text
-UptimeKumaTrayAgent-Setup-1.1.0-x64.msi
+UptimeKumaTrayAgent-Setup-1.1.1-x64.msi
 ```
 
 Wichtig: `Install.cmd` muss als Administrator gestartet werden. Der Setup-Installer fragt bei Bedarf automatisch nach Administratorrechten. Der Dienst wird als `LocalSystem` mit Starttyp `Automatisch` eingerichtet und erscheint in `services.msc` als:

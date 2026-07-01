@@ -25,19 +25,29 @@ button{font:inherit}
 .rz-tl{top:0;left:0;width:9px;height:9px;cursor:nwse-resize}.rz-tr{top:0;right:0;width:9px;height:9px;cursor:nesw-resize}
 .rz-bl{bottom:0;left:0;width:9px;height:9px;cursor:nesw-resize}.rz-br{bottom:0;right:0;width:9px;height:9px;cursor:nwse-resize}
 body.max .rz{display:none}
-.winbtn{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:7px;border:0;background:transparent;color:var(--muted);cursor:pointer}
+.winbtn{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:7px;border:0;background:transparent;color:var(--muted);cursor:pointer;transition:background .16s ease,color .16s ease}
 .winbtn:hover{background:var(--surface-2);color:var(--text)}
 .winbtn.cl:hover{background:var(--down);color:#fff}
-.rowact{display:flex;gap:4px;justify-content:flex-end;opacity:0;transition:opacity .12s}
-.trow:hover .rowact{opacity:1}
+.rowact{display:flex;gap:4px;justify-content:flex-end;opacity:0;transform:translateX(4px);transition:opacity .18s ease,transform .18s ease}
+.trow{transition:background .16s ease,opacity .16s ease}
+.trow:hover .rowact{opacity:1;transform:translateX(0)}
 .trow:hover{background:var(--surface-2)}
-.iconbtn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--muted);cursor:pointer}
+.iconbtn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--muted);cursor:pointer;transition:color .16s ease,border-color .16s ease,background .16s ease,transform .1s ease}
 .iconbtn:hover{color:var(--text);border-color:var(--faint)}
+.iconbtn:active{transform:scale(.92)}
 .iconbtn.dz:hover{color:var(--down);border-color:var(--down)}
+.navbtn{transition:background .16s ease,color .16s ease,filter .16s ease}
 .navbtn:hover{filter:brightness(1.04)}
+.btnp,.btns{transition:filter .16s ease,transform .1s ease,box-shadow .16s ease}
+.btnp:hover,.btns:hover{filter:brightness(1.05)}
+.btnp:active,.btns:active{transform:translateY(1px)}
+@keyframes ovIn{from{opacity:0}to{opacity:1}}
+@keyframes modalIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+#scroller.sect-change>*{animation:fadeUp .22s ease both}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:10000;padding:24px}
-.ov.show{display:flex}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:580px;max-width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.4)}
+.ov.show{display:flex;animation:ovIn .18s ease}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:580px;max-width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.4);animation:modalIn .2s cubic-bezier(.2,.8,.25,1)}
 .modal .mh{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border)}
 .modal .mb{padding:18px 22px;overflow:auto}
 .modal .mf{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid var(--border)}
@@ -101,10 +111,16 @@ function sectionList(){
   return list;
 }
 
+let lastSection=null;
 function render(){
   document.documentElement.setAttribute("data-theme",theme());
   const root=document.getElementById("root");
   const sec=ui.section,k=S.kpi||{};
+  // Preserve the scroll position across re-renders of the same section so live updates
+  // (e.g. new log lines) don't yank the view back to the top.
+  const prevScroller=document.getElementById("scroller");
+  const prevScroll=prevScroller?prevScroller.scrollTop:0;
+  const sectionChanged=lastSection!==sec;
   const accentSoft="color-mix(in srgb,var(--accent) 14%,transparent)";
   const navCount=t=>(S.monitors||[]).filter(m=>m.type===t).length;
   const counts={allgemein:(S.monitors||[]).length,ping:navCount("ping"),tcp:navCount("tcp"),service:navCount("service"),drive:navCount("drive"),logs:"",settings:""};
@@ -165,7 +181,7 @@ function render(){
           ${sec!=='logs'&&sec!=='settings'?`<button id="btnAdd" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);cursor:pointer;font-size:12.5px;font-weight:600">${ic("add",18)}Hinzufügen</button>`:""}
           <button id="btnTest" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 16px;border:0;border-radius:10px;background:var(--accent);color:#fff;cursor:pointer;font-size:12.5px;font-weight:600;box-shadow:0 2px 8px color-mix(in srgb,var(--accent) 40%,transparent)">${ic("play_arrow",18)}Testlauf</button>
         </div>
-        <div style="flex:1;overflow:auto;padding:24px 28px 40px">${body}</div>
+        <div id="scroller" style="flex:1;overflow:auto;padding:24px 28px 40px">${body}</div>
       </div>
     </div>
 
@@ -177,6 +193,12 @@ function render(){
       <span style="font-family:'JetBrains Mono',monospace">${E(S.lastError?("Fehler: "+S.lastError):"Bereit")}</span>
     </div>
   </div>`;
+  const sc=document.getElementById("scroller");
+  if(sc){
+    if(sectionChanged){sc.classList.add("sect-change");}
+    else{sc.scrollTop=prevScroll;}
+  }
+  lastSection=sec;
   wire();
 }
 
@@ -189,9 +211,9 @@ function renderMonitors(sec,k){
       ${kpiCard("lan","Monitore",k.total||0,"aktiv überwacht","var(--text)","var(--faint)")}
       ${kpiCard("check_circle","Erreichbar",up,(k.uptime||"0%")+" Verfügbarkeit","var(--accent-ink)","var(--accent-ink)")}
       ${kpiCard("error","Ausfälle",down,"brauchen Aufmerksamkeit","var(--down)","var(--down)")}
-      ${kpiCard("bolt","Ø Antwort",(k.avg||"—"),"letzter Zyklus","var(--text)","var(--faint)")}
+      ${kpiCard("bolt","Ø Antwort",(k.avg||"—"),"Push an Uptime Kuma","var(--text)","var(--faint)")}
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;box-shadow:0 1px 2px var(--shadow);display:flex;flex-direction:column">
-        <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;color:var(--muted)"><span style="display:flex;align-items:center;gap:8px">${ic("show_chart",18,"color:var(--faint)")}Antwortzeit-Trend</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;color:var(--muted)"><span style="display:flex;align-items:center;gap:8px">${ic("show_chart",18,"color:var(--faint)")}Kuma-Antwortzeit</span></div>
         <div style="flex:1;display:flex;align-items:flex-end;gap:3px;margin-top:14px;min-height:48px">${spark||'<span style="color:var(--faint);font-size:11.5px">keine Daten</span>'}</div>
       </div></div>`;
     if(S.lastError){
@@ -395,9 +417,14 @@ let tt=null;
 function toast(msg,kind){const el=document.getElementById("toast");el.innerHTML=ic(kind==="err"?"error":"check_circle",17)+E(msg);el.className=(kind||"")+" show";clearTimeout(tt);tt=setTimeout(()=>el.className="",3000);}
 
 /* ---- bridge ---- */
+let lastSig=null;
 window.agent={
   applyState:s=>{
     if(!s)return;
+    // Skip re-rendering when the incoming state is byte-for-byte identical to what we
+    // already show. The host pushes a full snapshot ~every 1.5s; without this guard the
+    // table rebuilds constantly and flickers/"blinks" under the mouse.
+    const sig=JSON.stringify(s);
     // Preserve in-progress edits while the user is on the settings tab or a modal is open.
     const keepSettings=ui.section==="settings"&&S.settings;
     const prevS=S.settings,prevW=S.watchdog;
@@ -408,6 +435,8 @@ window.agent={
     if(document.getElementById("overlay"))return;
     const a=document.activeElement;
     if(a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)&&document.getElementById("root").contains(a))return;
+    if(sig===lastSig)return;
+    lastSig=sig;
     render();
   },
   toast:(m,e)=>toast(m,e?"err":"ok"),

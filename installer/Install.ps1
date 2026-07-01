@@ -3,7 +3,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$appVersion = "1.1.0"
+$appVersion = "1.1.1"
 $publisher = "Kamil Bura"
 
 function Assert-Admin {

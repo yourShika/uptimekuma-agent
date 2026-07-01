@@ -105,6 +105,7 @@ public sealed class AgentWindowsService
         var pushService = new KumaPushService(_logger);
         var machineInfo = new MachineInfoProvider();
         var windowsServices = new WindowsServiceManager();
+        var statusStore = new RuntimeStatusStore(_paths);
         _monitoring = new MonitoringService(
             config,
             _logger,
@@ -113,7 +114,9 @@ public sealed class AgentWindowsService
             windowsServices,
             new DriveMonitorService(),
             new TcpConnectionMonitor(),
-            new DefaultPingService());
+            new DefaultPingService(),
+            statusStore,
+            "service");
         ApplyMonitoringState(config);
 
         _lastConfigWriteTimeUtc = GetConfigWriteTimeUtc();

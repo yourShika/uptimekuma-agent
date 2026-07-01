@@ -26,7 +26,10 @@ internal static class Program
         }
 
         I18n.Apply(AppLanguages.System);
-        if (!SingleInstanceGuard.TryAcquire(@"Global\UptimeKumaTrayAgent.Gui", out var guiGuard))
+        // Session-local mutex: every interactive Windows session (fast user switching / RDP)
+        // may open its own tray/configurator, while the "--service" guard above stays Global
+        // so the background service still runs exactly once per machine (as Local System).
+        if (!SingleInstanceGuard.TryAcquire(@"Local\UptimeKumaTrayAgent.Gui", out var guiGuard))
         {
             MessageBox.Show(
                 I18n.T("Uptime Kuma Tray Agent läuft bereits."),
